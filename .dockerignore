@@ -40,6 +40,7 @@ checkpoints/
 # Logs & Monitoring
 logs/
 *.log
+mlruns.db
 mlruns/         # MLflow tracking
 tensorboard/    # TensorBoard logs
 lightning_logs/ # PyTorch Lightning logs
