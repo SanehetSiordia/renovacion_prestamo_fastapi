@@ -21,6 +21,7 @@ __pycache__/
 *.pyc
 .ipynb_checkpoints/
 .python-version
+*.ipynb
 
 
 # Large ML Assets
@@ -54,6 +55,7 @@ build/
 Dockerfile
 docker-compose*
 README.md
+.devcontainer/
 
 #DVC Cache and Data
 .dvc/cache

@@ -12,6 +12,7 @@ postgres/
 .idea/
 .DS_Store
 Thumbs.db
+.devcontainer/
 
 # Logs & Monitoring
 logs/
