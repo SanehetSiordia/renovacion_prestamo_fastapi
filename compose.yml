@@ -42,7 +42,7 @@ services:
     env_file:
       - .env
 
-    image: python:3.14-slim
+    image: python:3.12-slim
     container_name: ${DOCKER_MLFLOW_NAME}
     command: >
       bash -c 'pip install mlflow -q &&
