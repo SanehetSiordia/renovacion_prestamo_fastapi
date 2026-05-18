@@ -5,8 +5,8 @@ ARG PORT_LOCAL
 ARG PORT_REMOTE
 
 # ── Metadatos ────────────────────────────────────────────────────────────────
-LABEL maintainer="MLOps Banco Wiesse"
-LABEL description="API de predicción de default crediticio"
+LABEL maintainer="MLOps Renovacion de Prestamo"
+LABEL description="API de predicción para renovacion de Prestamo"
 LABEL version=${APP_VERSION}
 
 # No mostrar actualización de pip y evitar escritura de archivos .pyc
