@@ -50,6 +50,7 @@ models/
 *.pkl
 *.pth
 *.onnx
+*.csv
 
 # DVC local state and cache
 .dvc/config.local
@@ -155,10 +156,13 @@ dmypy.json
 # Cython debug symbols
 cython_debug/
 
-#CsvFiles
-*.csv
-
 # Marimo
 marimo/_static/
 marimo/_lsp/
 __marimo__/
+
+#NOT IGNORE
+!*.dvc
+!dvc.yaml
+!dvc.lock
+!.dvcignore
