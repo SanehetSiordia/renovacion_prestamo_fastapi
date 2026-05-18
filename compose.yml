@@ -1,0 +1,61 @@
+services: 
+  fastapi:
+    env_file:
+      - .env
+
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        - PORT_LOCAL=${PORT_LOCAL}
+        - PORT_REMOTE=${PORT_REMOTE}
+
+    image: ${IMAGE_NAME}:${IMAGE_VERSION}
+    container_name: ${DOCKER_FASTAPI_NAME}
+    restart: always
+
+    environment:
+      - PIPELINE_VERSION=v1.0.0
+      - PORT_LOCAL=${PORT_LOCAL}
+      - PORT_REMOTE=${PORT_REMOTE}
+
+    #puerto-expuesto-local : puerto-expuesto-contenedor-app
+    ports:
+      - '${PORT_LOCAL}:${PORT_REMOTE}'    
+    volumes:
+     - ./artifacts:/app/artifacts   
+    networks:
+      - ${APP_NETWORK_NAME}
+    
+    #Servicio de Healthcheck
+    healthcheck:
+      test: >
+        python -c "import httpx, os; 
+        port = os.getenv('PORT_LOCAL'); 
+        httpx.get(f'http://localhost:{port}/health')"
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # ── Servicio 2: MLflow UI (tracking de experimentos) ──────────────────────
+  mlflow:
+    env_file:
+      - .env
+
+    image: python:3.14-slim
+    container_name: ${DOCKER_MLFLOW_NAME}
+    command: >
+      bash -c 'pip install mlflow -q &&
+               mlflow ui --host 0.0.0.0 --port 5000
+               --backend-store-uri file:///mlruns'
+    ports:
+      - '5000:5000'
+    volumes:
+      - ./mlruns:/mlruns
+    networks:
+      - ${APP_NETWORK_NAME}
+
+networks:
+  banco-wiesse-net:
+    name: ${APP_NETWORK_NAME}
+    driver: bridge
