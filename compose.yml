@@ -56,6 +56,6 @@ services:
       - ${APP_NETWORK_NAME}
 
 networks:
-  banco-wiesse-net:
+  renovacion_prestamo-net:
     name: ${APP_NETWORK_NAME}
     driver: bridge
