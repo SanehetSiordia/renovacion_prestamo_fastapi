@@ -8,4 +8,8 @@ app.version= "0.0.1-SNAPSHOT"
 
 @app.get('/')
 def home():
-    return "Hola Mundo - Renovacion Prestamo con Fast API"
+    return {"message": "Hola Mundo - Renovacion Prestamo con Fast API"}
+
+@app.get('/health')
+def health():
+    return {"status": "healthy"}

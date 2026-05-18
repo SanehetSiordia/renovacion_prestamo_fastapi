@@ -54,6 +54,7 @@ build/
 .dockerignore
 Dockerfile
 docker-compose*
+compose*
 README.md
 .devcontainer/
 

@@ -31,7 +31,7 @@ services:
     healthcheck:
       test: >
         python -c "import httpx, os; 
-        port = os.getenv('PORT_LOCAL'); 
+        port = os.getenv('PORT_REMOTE'); 
         httpx.get(f'http://localhost:{port}/health')"
       interval: 30s
       timeout: 10s
@@ -47,7 +47,8 @@ services:
     command: >
       bash -c 'pip install mlflow -q &&
                mlflow ui --host 0.0.0.0 --port 5000
-               --backend-store-uri file:///mlruns'
+               --backend-store-uri file:///mlruns
+               --default-artifact-root file:///mlruns/artifacts'
     ports:
       - '5000:5000'
     volumes:
