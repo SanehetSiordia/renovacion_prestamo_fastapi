@@ -62,7 +62,8 @@ README.md
 .dvc/cache
 .dvc/tmp
 .dvc/cache/*
-data/
+.dvc/.gitignore
+*.csv
 
 #NOT IGNORE
 !src/

@@ -56,6 +56,7 @@ models/
 .dvc/config.local
 .dvc/tmp/
 .dvc/cache/
+.dvc/.gitignore
 
 # PyInstaller
 #  Usually these files are written by a python script from a template
