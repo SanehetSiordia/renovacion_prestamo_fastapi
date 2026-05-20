@@ -1,4 +1,4 @@
-FROM python:3.12-slim
+FROM python:3.12-slim as dev
 
 ARG APP_VERSION
 ARG PORT_LOCAL
@@ -34,12 +34,18 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 #COPIAR ARCHIVOS EN DIRECTORIO LOCAL EN DIRECTORIO DE LA IMAGEN
 COPY . .
 
+#PERMISOS DE EJECUCION DE SCRIPTS DE ENTRADA
+#RUN chmod +x entrypoint.sh
+
 #EXPOSICION DEL PUERTO DE LA IMAGEN
 EXPOSE 8000
 
 # ── Health check para que Docker sepa si el contenedor está sano ──────────────
 HEALTHCHECK --interval=30s --timeout=10s --retries=3 \
     CMD python -c "import httpx, os; port = os.getenv('PORT_REMOTE'); httpx.get(f'http://localhost:{port}/health')"
+
+#ENTRYPOINT PARA PREPARAR DATOS DEL CMD
+#ENTRYPOINT ["./entrypoint.sh"]
 
 #COMANDOS DE EJECUCION DEL APLICATIVO: uvicorn api.app:app --host 0.0.0.0 --port 8000 --reload
 CMD ["uvicorn", "api.app:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]

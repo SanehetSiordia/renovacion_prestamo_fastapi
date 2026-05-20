@@ -18,12 +18,18 @@ services:
       - PIPELINE_VERSION=v1.0.0
       - PORT_LOCAL=${PORT_LOCAL}
       - PORT_REMOTE=${PORT_REMOTE}
+      - PYTHONPATH=/app
 
     #puerto-expuesto-local : puerto-expuesto-contenedor-app
     ports:
       - '${PORT_LOCAL}:${PORT_REMOTE}'    
     volumes:
-     - ./artifacts:/app/artifacts   
+      - .:/app                         # <── CLAVE: Vincula todo tu código local con el contenedor
+      - /app/__pycache__               # <── Aísla las cachés binarias de Linux para que no ensucien Windows
+      - /app/.pytest_cache             # <── Aísla las cachés de pruebas de Pytest
+      - ./artifacts:/app/artifacts
+      - ./data:/app/data               #BORRAR CUANDO SE HAGA CONEXION CON SERVICIO CLOUD
+    # - ~/.dvc/cache:/root/.cache/dvc
     networks:
       - ${APP_NETWORK_NAME}
     

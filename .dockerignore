@@ -25,12 +25,8 @@ __pycache__/
 
 
 # Large ML Assets
-data/
-raw_data/
-datasets/
 notebooks/
 results/
-artifacts/
 models/
 models/*.pth
 models/*.h5
@@ -63,7 +59,7 @@ README.md
 .dvc/tmp
 .dvc/cache/*
 .dvc/.gitignore
-*.csv
+#**/*.csv    #--Ignorar cuando se tenga conexion con CLOUD
 
 #NOT IGNORE
 !src/
