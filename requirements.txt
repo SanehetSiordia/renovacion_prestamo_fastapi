@@ -1,26 +1,28 @@
 # Dataset
-dvc==3.67.1
+dvc>=3.67.1
 
 # ML
-pandas==3.0.3
-numpy==2.4.4
-scikit-learn==1.8.0
-imbalanced-learn==0.14.1
-matplotlib==3.10.9
-mlflow==3.12.0
-scipy==1.17.1
+pandas>=2.2.0,<3.0.0
+numpy>=2.0.0,<3.0.0
+xgboost>=2.0.0,<3.0.0
+scikit-learn>=1.8.0
+imbalanced-learn>=0.14.1
+matplotlib>=3.10.9
+mlflow>=3.12.0
+scipy>=1.17.1
+skops>=0.14.0
 
 # API
-fastapi==0.136.1
-uvicorn==0.47.0
-pydantic==2.13.4
-python-dotenv==1.2.2
-python-multipart==0.0.28
-httpx==0.28.1
+fastapi>=0.136.1
+uvicorn>=0.47.0
+pydantic>=2.13.4
+python-dotenv>=1.2.2
+python-multipart>=0.0.28
+httpx>=0.28.1
 
 # CI/CD
-pytest==9.0.3
-flake8==7.3.0
+pytest>=9.0.3
+flake8>=7.3.0
 
 # Monitoreo de drift — EvidentlyAI
-evidently==0.7.21
+evidently>=0.7.21

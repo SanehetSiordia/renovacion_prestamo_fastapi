@@ -1,8 +1,11 @@
 # Byte-compiled / optimized / DLL files
 __pycache__/
+*.pyc
 *.py[codz]
 *$py.class
+.pytest_cache/
 postgres/
+
 
 # C extensions
 *.so
@@ -44,17 +47,18 @@ share/python-wheels/
 MANIFEST
 
 # local data and models
-data/
 models/
 *.h5
 *.pkl
 *.pth
 *.onnx
+*.csv
 
 # DVC local state and cache
 .dvc/config.local
 .dvc/tmp/
 .dvc/cache/
+.dvc/.gitignore
 
 # PyInstaller
 #  Usually these files are written by a python script from a template
@@ -78,7 +82,6 @@ coverage.xml
 *.cover
 *.py.cover
 .hypothesis/
-.pytest_cache/
 cover/
 
 # Translations
@@ -155,10 +158,13 @@ dmypy.json
 # Cython debug symbols
 cython_debug/
 
-#CsvFiles
-*.csv
-
 # Marimo
 marimo/_static/
 marimo/_lsp/
 __marimo__/
+
+#NOT IGNORE
+!*.dvc
+!dvc.yaml
+!dvc.lock
+!.dvcignore

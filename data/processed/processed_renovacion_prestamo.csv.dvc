@@ -1,0 +1,5 @@
+outs:
+- md5: dfd79d9dfaf4c469337e52909bf5f736
+  size: 22042043
+  hash: md5
+  path: processed_renovacion_prestamo.csv

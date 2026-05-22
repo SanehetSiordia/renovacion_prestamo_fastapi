@@ -18,12 +18,18 @@ services:
       - PIPELINE_VERSION=v1.0.0
       - PORT_LOCAL=${PORT_LOCAL}
       - PORT_REMOTE=${PORT_REMOTE}
+      - PYTHONPATH=/app
 
     #puerto-expuesto-local : puerto-expuesto-contenedor-app
     ports:
       - '${PORT_LOCAL}:${PORT_REMOTE}'    
     volumes:
-     - ./artifacts:/app/artifacts   
+      - .:/app                         # <── CLAVE: Vincula todo tu código local con el contenedor
+      - /app/__pycache__               # <── Aísla las cachés binarias de Linux para que no ensucien Windows
+      - /app/.pytest_cache             # <── Aísla las cachés de pruebas de Pytest
+      - ./artifacts:/app/artifacts
+      - ./data:/app/data               #BORRAR CUANDO SE HAGA CONEXION CON SERVICIO CLOUD
+    # - ~/.dvc/cache:/root/.cache/dvc
     networks:
       - ${APP_NETWORK_NAME}
     
@@ -31,7 +37,7 @@ services:
     healthcheck:
       test: >
         python -c "import httpx, os; 
-        port = os.getenv('PORT_LOCAL'); 
+        port = os.getenv('PORT_REMOTE'); 
         httpx.get(f'http://localhost:{port}/health')"
       interval: 30s
       timeout: 10s
@@ -42,12 +48,13 @@ services:
     env_file:
       - .env
 
-    image: python:3.14-slim
+    image: python:3.12-slim
     container_name: ${DOCKER_MLFLOW_NAME}
     command: >
       bash -c 'pip install mlflow -q &&
                mlflow ui --host 0.0.0.0 --port 5000
-               --backend-store-uri file:///mlruns'
+               --backend-store-uri file:///mlruns
+               --default-artifact-root file:///mlruns/artifacts'
     ports:
       - '5000:5000'
     volumes:
@@ -56,6 +63,6 @@ services:
       - ${APP_NETWORK_NAME}
 
 networks:
-  banco-wiesse-net:
+  renovacion_prestamo-net:
     name: ${APP_NETWORK_NAME}
     driver: bridge
