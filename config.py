@@ -1,9 +1,7 @@
 """
 config.py — Configuración centralizada del pipeline MLOps Renovacion de Prestamo
-
 Uso:
     import config as C
-    df = pd.read_csv(C.RAW_DATA_PATH, sep=';')
 """
 import os
 from pathlib import Path
@@ -12,12 +10,17 @@ from pathlib import Path
 ROOT_DIR      = Path(__file__).parent
 DATA_RAW_DIR      = ROOT_DIR / 'data/raw'
 DATA_PROCESSED_DIR      = ROOT_DIR / 'data/processed'
+ARTIFACTS_DIR = ROOT_DIR / 'artifacts'
 
 # ── Archivos ─────────────────────────────────────────────────────────────────
 RAW_DATA_PATH   = DATA_RAW_DIR      / 'raw_renovacion_prestamo.csv'
 PROCESSED_DATA_PATH = DATA_PROCESSED_DIR / 'processed_renovacion_prestamo.csv'
 
-# ── Columnas ─────────────────────────────────────────────────────────────────
+MODEL_PKL_PATH      = ARTIFACTS_DIR / 'modelo.pkl'
+MODEL_SKOPS_PATH      = ARTIFACTS_DIR / 'modelo.skops'
+METRICS_PATH    = ARTIFACTS_DIR / 'metrics.json'
+
+# ── Columnas  para Preprocesamiento ────────────────────────────────────────────────
 TARGET     = 'FLAG_VENTA'
 COLUMNAS_RENOMBRAR = {
     "LINEA_RENOVADO": "Linea_Renovado",
@@ -35,7 +38,6 @@ COLUMNAS_RENOMBRAR = {
     "CUBRIR_DEUDA_CONSUMO_SF_RENOVA_PLD": "Deuda_Cubierta%",
 }
 
-# ── Preprocesamiento ──────────────────────────────────────────────────────────
 COLUMNAS_IMPUTAR_NEGATIVOS = ['Ahorro','Prestamo_vigente','Promed_6Mdeuda']
 
 COLUMNAS_TRANSFORMAR_LOG = ['Uso_Linea',
@@ -52,6 +54,37 @@ COLUMNAS_TRANSFORMAR_LOG = ['Uso_Linea',
 
 COLUMNAS_NULOS_SAMPLING_ALEATORIO=['Uso_TrimLinea_LOG','Uso_Linea_LOG','Meses_oferta']
 
-COLUMNAS_NULOS_MEDIANA=['Saldo_Consumo_LOG','SUELDO_ESTIMADO_LOG','ANTIGUEDAD_MES_LOG','EDAD']
+COLUMNAS_NULOS_MEDIANA=['Saldo_Consumo_LOG',
+                        'SUELDO_ESTIMADO_LOG',
+                        'ANTIGUEDAD_MES_LOG',
+                        'EDAD',
+                        'Uso_TrimLinea_LOG',
+                        'Prestamo_vigente_LOG',
+                        'Uso_Linea_LOG']
 
-COLUMNAS_NULOS_CATEGORIAS = ['REGION','SEXO','EST_CIVIL']
+COLUMNAS_CATEGORIAS = ['REGION','SEXO','EST_CIVIL']
+
+COLUMNAS_KMEANS = ['Uso_TrimLinea_LOG', 'Prestamo_vigente_LOG', 'Uso_Linea_LOG']
+
+COLUMNAS_DROP=['Uso_Linea',
+               'Uso_TrimLinea',
+               'Saldo_Consumo',
+               'SUELDO_ESTIMADO',
+               'ANTIGUEDAD_MES',
+               'Linea_Renovado',
+               'Ahorro',
+               'Prestamo_vigente',
+               'Promed_6Mdeuda',
+               'Deuda_Cubierta%',
+               'MES',
+               'CLIENTE']
+
+# ── Entrenamiento ─────────────────────────────────────────────────────────────
+K_FEATURES       = 3
+TEST_SIZE        = 0.3
+RANDOM_STATE     = 42
+TECNICA_BALANCEO = ['undersampling', 'oversampling','smote']
+
+# ── MLflow ────────────────────────────────────────────────────────────────────
+MLFLOW_EXPERIMENT = 'renovacion de prestamo - SinhueSiordia'
+MLFLOW_RUN_NAME   = os.getenv('PIPELINE_VERSION', 'run-local')
