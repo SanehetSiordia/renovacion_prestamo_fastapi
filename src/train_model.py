@@ -245,7 +245,7 @@ def optimizar_hiperparametros_mlflow(
         log.warning(
             f"No se encontraron hiperparámetros para {nombre_modelo}. Se retornará el modelo base."
         )
-        return mejor_modelo_base, nombre_modelo, metricas_modelo
+        return mejor_modelo_base, metricas_modelo
 
     mlflow.set_experiment(C.MLFLOW_EXPERIMENT)
     run_name_tuning = f"Tuning_{nombre_modelo}_{C.MLFLOW_RUN_NAME}"

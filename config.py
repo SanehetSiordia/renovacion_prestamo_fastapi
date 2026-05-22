@@ -88,3 +88,7 @@ TECNICA_BALANCEO = ['undersampling', 'oversampling','smote']
 # ── MLflow ────────────────────────────────────────────────────────────────────
 MLFLOW_EXPERIMENT = 'renovacion de prestamo - SinhueSiordia'
 MLFLOW_RUN_NAME   = os.getenv('PIPELINE_VERSION', 'run-local')
+
+
+# ── Validar Modelo ─────────────────────────────────────────────────────────────
+UMBRAL_MIN=0.7
