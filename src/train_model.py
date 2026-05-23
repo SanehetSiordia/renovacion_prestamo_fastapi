@@ -157,6 +157,13 @@ def modelar_mlflow(df_train: pd.DataFrame,
             df_train_smote[C.TARGET],
         ),
     }
+    uri_tracking = C.MLFLOW_URI
+
+    if "http://mlflow:" in uri_tracking:
+        if not os.getenv("DOCKER_FASTAPI_NAME"):
+            log.info("⚠️ Detectada ejecución local en Host/Codespace. Conmutando URI de 'mlflow' a 'localhost'.")
+            uri_tracking = uri_tracking.replace("http://mlflow:", "http://localhost:")
+
     mlflow.set_tracking_uri(C.MLFLOW_URI)
     mlflow.set_experiment(C.MLFLOW_EXPERIMENT)
 
@@ -254,7 +261,12 @@ def optimizar_hiperparametros_mlflow(
             f"No se encontraron hiperparámetros para {nombre_modelo}. Se retornará el modelo base."
         )
         return mejor_modelo_base, metricas_modelo
+    
+    uri_tracking = C.MLFLOW_URI
+    if "http://mlflow:" in uri_tracking and not os.getenv("DOCKER_FASTAPI_NAME"):
+        uri_tracking = uri_tracking.replace("http://mlflow:", "http://localhost:")
 
+    mlflow.set_tracking_uri(uri_tracking)
     mlflow.set_experiment(C.MLFLOW_EXPERIMENT)
     run_name_tuning = f"Tuning_{nombre_modelo}_{C.MLFLOW_RUN_NAME}"
 
