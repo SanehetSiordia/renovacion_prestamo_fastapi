@@ -1,4 +1,5 @@
-""" Etapa 1 — Manejo de datos: Ingestión, tratamiento de datos y Feature engineering. 
+""" 
+manage_data.py —  Ingestión, tratamiento de datos y Feature engineering. 
 Entrada : data/raw/raw_renovacion_prestamo.csv
 Salida  : data/processed/processed_renovacion_prestamo.csv
 """ 

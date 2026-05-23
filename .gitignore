@@ -21,6 +21,7 @@ Thumbs.db
 logs/
 *.log
 mlruns.db
+mlruns/*
 mlruns/         # MLflow tracking
 tensorboard/    # TensorBoard logs
 lightning_logs/ # PyTorch Lightning logs
@@ -48,8 +49,12 @@ MANIFEST
 
 # local data and models
 models/
+models/*
+artifacts/
+artifacts/*
 *.h5
 *.pkl
+*.skops
 *.pth
 *.onnx
 *.csv
