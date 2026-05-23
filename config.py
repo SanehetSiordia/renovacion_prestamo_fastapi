@@ -35,7 +35,7 @@ COLUMNAS_RENOMBRAR = {
     "PConsumo_Sldo_Bco_T1": "Prestamo_vigente",
     "SDO_BCO_tot_sm_pasivo_Bco_6M": "Promed_6Mdeuda",
     "FLAG_LIMA_PROVINCIA": "Flag_LimProv",
-    "CUBRIR_DEUDA_CONSUMO_SF_RENOVA_PLD": "Deuda_Cubierta%",
+    "CUBRIR_DEUDA_CONSUMO_SF_RENOVA_PLD": "Deuda_Cubierta",
 }
 
 COLUMNAS_IMPUTAR_NEGATIVOS = ['Ahorro','Prestamo_vigente','Promed_6Mdeuda']
@@ -50,7 +50,7 @@ COLUMNAS_TRANSFORMAR_LOG = ['Uso_Linea',
                             'Prestamo_vigente',
                             'Promed_6Mdeuda',
                             'SUELDO_ESTIMADO',
-                            'Deuda_Cubierta%']
+                            'Deuda_Cubierta']
 
 COLUMNAS_NULOS_SAMPLING_ALEATORIO=['Uso_TrimLinea_LOG','Uso_Linea_LOG','Meses_oferta']
 
@@ -75,7 +75,7 @@ COLUMNAS_DROP=['Uso_Linea',
                'Ahorro',
                'Prestamo_vigente',
                'Promed_6Mdeuda',
-               'Deuda_Cubierta%',
+               'Deuda_Cubierta',
                'MES',
                'CLIENTE']
 
@@ -91,5 +91,50 @@ MLFLOW_RUN_NAME   = os.getenv('PIPELINE_VERSION', 'run-local')
 MLFLOW_URI = os.getenv("MLFLOW_TRACKING_URI", "http://localhost:5000")
 
 # ── Validar Modelo ─────────────────────────────────────────────────────────────
-UMBRAL_MIN=float(os.getenv("UMBRAL_MIN","0.7"))
+UMBRAL_MIN=float(os.getenv("UMBRAL_MIN","0.6"))
 MODEL_NAME=(os.getenv("MODEL_NAME","RenovacionPrestamo"))
+
+# ── features para predecir con el modelo ────────────────────────────────────────
+
+FEATURES = [
+    "Plazo_Renovado",
+    "Nro_Entidades",
+    "Dif_Entidades",
+    "Meses_oferta",
+    "EDAD",
+    "Flag_LimProv",
+    "Uso_Linea_LOG",
+    "Uso_TrimLinea_LOG",
+    "Saldo_Consumo_LOG",
+    "SUELDO_ESTIMADO_LOG",
+    "ANTIGUEDAD_MES_LOG",
+    "Linea_Renovado_LOG",
+    "Ahorro_LOG",
+    "Prestamo_vigente_LOG",
+    "Promed_6Mdeuda_LOG",
+    "Deuda_Cubierta_LOG",
+    "REGION_CALLAO",
+    "REGION_CENTRO",
+    "REGION_LIMA BALNEARIO",
+    "REGION_LIMA CENTRO",
+    "REGION_LIMA ESTE",
+    "REGION_LIMA MODERNA",
+    "REGION_LIMA NORTE",
+    "REGION_LIMA PROVINCIA",
+    "REGION_LIMA SUR",
+    "REGION_NORTE",
+    "REGION_OESTE",
+    "REGION_ORIENTE",
+    "REGION_SIERRA CENTRAL",
+    "REGION_SUR",
+    "SEXO_F",
+    "SEXO_M",
+    "EST_CIVIL_C",
+    "EST_CIVIL_D",
+    "EST_CIVIL_S",
+    "EST_CIVIL_U",
+    "EST_CIVIL_V",
+    "EST_CIVIL_X",
+    "EST_CIVIL_Y",
+    "Cluster"
+]
