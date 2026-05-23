@@ -14,7 +14,7 @@ ENV PIP_DISABLE_PIP_VERSION_CHECK=1
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
 ENV APP_VERSION=${APP_VERSION}
-ENV PORT=${PORT_REMOTE}
+ENV PORT_REMOTE=${PORT_REMOTE}
 ENV PORT_LOCAL=${PORT_LOCAL}
 
 WORKDIR /app
@@ -34,11 +34,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 #COPIAR ARCHIVOS EN DIRECTORIO LOCAL EN DIRECTORIO DE LA IMAGEN
 COPY . .
 
-#PERMISOS DE EJECUCION DE SCRIPTS DE ENTRADA
-#RUN chmod +x entrypoint.sh
-
 #EXPOSICION DEL PUERTO DE LA IMAGEN
-EXPOSE 8000
+EXPOSE ${PORT_REMOTE}
 
 # ── Health check para que Docker sepa si el contenedor está sano ──────────────
 HEALTHCHECK --interval=30s --timeout=10s --retries=3 \
@@ -48,4 +45,4 @@ HEALTHCHECK --interval=30s --timeout=10s --retries=3 \
 #ENTRYPOINT ["./entrypoint.sh"]
 
 #COMANDOS DE EJECUCION DEL APLICATIVO: uvicorn api.app:app --host 0.0.0.0 --port 8000 --reload
-CMD ["uvicorn", "api.app:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
+CMD uvicorn api.app:app --host 0.0.0.0 --port ${PORT_REMOTE} --reload
