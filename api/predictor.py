@@ -3,7 +3,6 @@ import sys
 import logging
 import json
 import pickle
-import skops.io as sio
 import pandas as pd
 
 from pathlib import Path
@@ -11,20 +10,12 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 import config as C
 
-LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO").upper()
-logging.basicConfig(
-    level=getattr(logging, LOG_LEVEL),
-    format="%(asctime)s | PREDICTOR API | %(levelname)s | %(message)s",
-    datefmt="%H:%M:%S",
-)
 log = logging.getLogger(__name__)
 
 MODEL_PATH   = C.MODEL_PKL_PATH
 METRICS_PATH = C.METRICS_PATH
-
 FEATURES = C.FEATURES
 UMBRAL   = C.UMBRAL_MIN
-
 
 class Predictor:
     def __init__(self, model=None):

@@ -22,7 +22,7 @@ log = logging.getLogger(__name__)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    log.info(f"Iniciando API en entorno: {os.getenv("ENV", "dev")}")
+    log.info(f"Iniciando API en entorno: {os.getenv('ENV', 'dev')}")
     predictor.cargar()
     log.info(f"Modelo listo: {type(predictor.modelo).__name__}")
     yield
@@ -30,9 +30,9 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(lifespan=lifespan)
 app.title = os.getenv("APP_NAME", "Renovacion_Prestamo")
-app.version= os.getenv("APP_VERSION", "v1.0.0")
-app.description=("Modelo clasifiacion de usuarios para renovacion de prestamo bancario"
-                 "Modelo entrenado con el pipeline MLOps del proyecto con enfoque en RECALL"
+app.version= os.getenv("APP_VERSION", "1.0.0")
+app.description=("Modelo clasifiacion de usuarios para renovacion de prestamo bancario."
+                 "Modelo entrenado con el pipeline MLOps del proyecto con enfoque en RECALL."
                  )
 app.docs_url="/docs"
 app.debug=os.getenv("DEBUG", "False").lower() == "true"
@@ -49,7 +49,7 @@ def root():
     return {
         "api":     os.getenv("APP_NAME", "Renovacion_Prestamo"),
         "env":     os.getenv("ENV", "dev"),
-        "version": os.getenv("APP_VERSION", "v1.0.0"),
+        "version": os.getenv("APP_VERSION", "1.0.0"),
         "docs":    "/docs",
         "health":  "/health",
     }
@@ -61,7 +61,7 @@ def health():
     return HealthResponse(
         status="ok",
         modelo=type(predictor.modelo).__name__,
-        version=os.getenv("APP_VERSION", "v1.0.0"),
+        version=os.getenv("APP_VERSION", "1.0.0"),
         recall=float(predictor.metricas.get('metricas_evaluacion', {}).get('recall', 0)),
         env=os.getenv("ENV", "dev"),
     )

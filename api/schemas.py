@@ -105,7 +105,7 @@ class ClienteInput(BaseModel):
 class PrediccionOutput(BaseModel):
     """Respuesta del clasificador para renovacion de prestamo."""
     score_riesgo:         float
-    decision:             Literal["USUARIO PARA RENOVACION", "NORMAL"]
+    decision:             Literal["USUARIO PARA RENOVACION DETECTADO", "NORMAL"]
     probabilidad_pico:    float
     umbral_usado:         float
     modelo:               str
