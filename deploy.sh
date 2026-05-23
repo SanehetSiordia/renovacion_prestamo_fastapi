@@ -32,14 +32,14 @@ echo "  Build OK"
 
 # ── PASO 3: Levantar el entorno --------──────────────────────────────────────
 echo "[3/5] Levantando entorno completo..."
-docker compose -f $COMPOSE_FILE up -d
-echo "  Esperando 120 segundos para que los servicios inicien..."
-sleep 120
+docker compose -f $COMPOSE_FILE up --build -d
+echo "  Esperando 30 segundos para que los servicios inicien..."
+sleep 30
 
 # ── PASO 4: Tag de la versión ─────────────────────────────────────────────────
-echo "[4/5] Tagging imagen como $VERSION..."
-docker tag "$IMAGE_NAME:latest" "$IMAGE_NAME:$VERSION"
-echo "  Imagen taggeada: $IMAGE_NAME:$VERSION"
+echo "[4/5] Tagging imagen de la versión como latest para consistencia..."
+docker tag "$IMAGE_NAME:$VERSION" "$IMAGE_NAME:latest"
+echo "  Imagen taggeada exitosamente: $IMAGE_NAME:latest"
 
 # ── PASO 5: Verificación final ────────────────────────────────────────────────
 echo "[5/5] Verificación final..."
