@@ -1,3 +1,8 @@
+"""
+train_model.py — entrena el modelo y crea los artefactos correspondientes.
+Entrada : data/processed/processed_renovacion_prestamo.csv
+Salida  : artifacts/metrics.json | artifacts/modelo.pkl | artifacts/modelo.skops
+"""
 
 import sys
 import os
@@ -42,6 +47,7 @@ from imblearn.over_sampling import SMOTE
 
 os.environ["GIT_PYTHON_REFRESH"] = "quiet"
 warnings.filterwarnings("ignore", category=UserWarning, module="mlflow")
+warnings.filterwarnings("ignore", category=FutureWarning, module="mlflow")
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s | TRAIN_DATA | %(levelname)s | %(message)s',
                     datefmt='%H:%M:%S')
@@ -150,7 +156,7 @@ def modelar_mlflow(df_train: pd.DataFrame,
             df_train_smote[C.TARGET],
         ),
     }
-
+    mlflow.set_tracking_uri(C.MLFLOW_URI)
     mlflow.set_experiment(C.MLFLOW_EXPERIMENT)
 
     with mlflow.start_run(run_name=C.MLFLOW_RUN_NAME) as run:
@@ -293,6 +299,7 @@ def optimizar_hiperparametros_mlflow(
                 "xgboost.sklearn.XGBClassifier",
                 "xgboost.core.Booster",
             ],
+            registered_model_name=C.MODEL_NAME,
         )
 
         metricas_modelo = {

@@ -2,65 +2,58 @@ services:
   fastapi:
     env_file:
       - .env
-
     build:
       context: .
       dockerfile: Dockerfile
       args:
         - PORT_LOCAL=${PORT_LOCAL}
         - PORT_REMOTE=${PORT_REMOTE}
-
     image: ${IMAGE_NAME}:${IMAGE_VERSION}
     container_name: ${DOCKER_FASTAPI_NAME}
     restart: always
-
     environment:
       - PIPELINE_VERSION=v1.0.0
       - PORT_LOCAL=${PORT_LOCAL}
       - PORT_REMOTE=${PORT_REMOTE}
       - PYTHONPATH=/app
-
-    #puerto-expuesto-local : puerto-expuesto-contenedor-app
+      - MLFLOW_TRACKING_URI=${MLFLOW_TRACKING_URI}
     ports:
       - '${PORT_LOCAL}:${PORT_REMOTE}'    
     volumes:
-      - .:/app                         # <── CLAVE: Vincula todo tu código local con el contenedor
-      - /app/__pycache__               # <── Aísla las cachés binarias de Linux para que no ensucien Windows
-      - /app/.pytest_cache             # <── Aísla las cachés de pruebas de Pytest
+      - .:/app 
+      - /app/__pycache__
+      - /app/.pytest_cache
       - ./artifacts:/app/artifacts
-      - ./data:/app/data               #BORRAR CUANDO SE HAGA CONEXION CON SERVICIO CLOUD
-    # - ~/.dvc/cache:/root/.cache/dvc
+      - ./data:/app/data
     networks:
       - ${APP_NETWORK_NAME}
-    
-    #Servicio de Healthcheck
-    healthcheck:
-      test: >
-        python -c "import httpx, os; 
-        port = os.getenv('PORT_REMOTE'); 
-        httpx.get(f'http://localhost:{port}/health')"
-      interval: 30s
-      timeout: 10s
-      retries: 3
+    depends_on:
+      mlflow:
+        condition: service_healthy
 
-  # ── Servicio 2: MLflow UI (tracking de experimentos) ──────────────────────
   mlflow:
     env_file:
       - .env
-
     image: python:3.12-slim
     container_name: ${DOCKER_MLFLOW_NAME}
+    environment:
+      - GUNICORN_CMD_ARGS=--forwarded-allow-ips=* --allow-code-sharing
     command: >
-      bash -c 'pip install mlflow -q &&
-               mlflow ui --host 0.0.0.0 --port 5000
-               --backend-store-uri file:///mlruns
-               --default-artifact-root file:///mlruns/artifacts'
+      bash -c "pip install mlflow -q &&
+               mlflow server --host 0.0.0.0 --port 5000
+               --backend-store-uri sqlite:///mlruns/mlflow.db
+               --default-artifact-root file:///mlruns/artifacts"
     ports:
       - '5000:5000'
     volumes:
       - ./mlruns:/mlruns
     networks:
       - ${APP_NETWORK_NAME}
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:5000/')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
 networks:
   renovacion_prestamo-net:

@@ -1,4 +1,5 @@
-"""validate_model.py — Valida que las métricas superen el umbral mínimo.
+"""
+validate_model.py — Valida que las métricas superen el umbral mínimo.
 
 Si falla, el pipeline CI/CD se detiene y no se construye la imagen Docker.
 """
@@ -10,12 +11,10 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 import config as C
 
-
 logging.basicConfig(level=logging.INFO, format='%(asctime)s | VALIDATE_MODEL | %(levelname)s | %(message)s',
                     datefmt='%H:%M:%S')
 
 log = logging.getLogger(__name__)
-
 
 # ── Funciones para gestionar metricas json ────────────────────────────────────── 
 
@@ -68,7 +67,7 @@ def quality_gate(algoritmo:dict,hiperparametros:dict,metricas:dict) -> None:
 # ── Función principal ───────────────────────────────────────────────────── 
 
 def run():    
-    log.info('=== ETAPA 5: Validacion de Resultados del Modelo ===')
+    log.info('=== ETAPA 5: VALIDACION DE RESULTADOS DEL MODELO ===')
      
     if not C.METRICS_PATH.exists():        
         raise FileNotFoundError(f'Ruta del metricas no encontradas: {C.METRICS_PATH}')    
