@@ -23,8 +23,6 @@ COPY requirements.txt .
 
 # ── Instalar dependencias del sistema (mínimas) ───────────────────────────────
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    iputils-ping \
-    telnet \
     gcc \
     python3-dev \
     && pip install --no-cache-dir -r requirements.txt \
