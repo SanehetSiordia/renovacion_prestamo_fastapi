@@ -35,7 +35,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 COPY . .
 
 #EXPOSICION DEL PUERTO DE LA IMAGEN
-EXPOSE ${PORT_REMOTE}
+EXPOSE 8000
 
 # ── Health check para que Docker sepa si el contenedor está sano ──────────────
 HEALTHCHECK --interval=30s --timeout=10s --retries=3 \
@@ -45,4 +45,4 @@ HEALTHCHECK --interval=30s --timeout=10s --retries=3 \
 #ENTRYPOINT ["./entrypoint.sh"]
 
 #COMANDOS DE EJECUCION DEL APLICATIVO: uvicorn api.app:app --host 0.0.0.0 --port 8000 --reload
-CMD uvicorn api.app:app --host 0.0.0.0 --port ${PORT_REMOTE} --reload
+CMD ["uvicorn", "api.app:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
