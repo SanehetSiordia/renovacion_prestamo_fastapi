@@ -49,6 +49,9 @@ MANIFEST
 
 # local data and models
 models/
+models/*
+artficats/
+artficats/*
 *.h5
 *.pkl
 *.skops
