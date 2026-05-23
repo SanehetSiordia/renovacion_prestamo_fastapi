@@ -86,7 +86,7 @@ RANDOM_STATE     = 42
 TECNICA_BALANCEO = ['undersampling', 'oversampling','smote']
 
 # ── MLflow ────────────────────────────────────────────────────────────────────
-MLFLOW_EXPERIMENT= os.getenv("MLFLOW_TRACKING_URI", "renovacion_prestamo-sinhue")
+MLFLOW_EXPERIMENT= os.getenv("MLFLOW_EXPERIMENT", "renovacion_prestamo-sinhue")
 MLFLOW_RUN_NAME   = os.getenv('PIPELINE_VERSION', 'run-local')
 MLFLOW_URI = os.getenv("MLFLOW_TRACKING_URI", "http://localhost:5000")
 
