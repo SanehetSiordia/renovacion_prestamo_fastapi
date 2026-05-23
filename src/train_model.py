@@ -18,6 +18,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 import config as C
+import socket
 import mlflow
 import mlflow.sklearn as ml_learn
 from mlflow.models import infer_signature
@@ -160,8 +161,10 @@ def modelar_mlflow(df_train: pd.DataFrame,
     uri_tracking = C.MLFLOW_URI
 
     if "http://mlflow:" in uri_tracking:
-        if not os.getenv("DOCKER_FASTAPI_NAME"):
-            log.info("⚠️ Detectada ejecución local en Host/Codespace. Conmutando URI de 'mlflow' a 'localhost'.")
+        try:
+            socket.getaddrinfo("mlflow", 5000)
+        except socket.gaierror:
+            log.info("⚠️ El DNS 'mlflow' no es accesible desde este entorno. Conmutando URI a 'localhost'.")
             uri_tracking = uri_tracking.replace("http://mlflow:", "http://localhost:")
 
     mlflow.set_tracking_uri(C.MLFLOW_URI)
@@ -263,8 +266,13 @@ def optimizar_hiperparametros_mlflow(
         return mejor_modelo_base, metricas_modelo
     
     uri_tracking = C.MLFLOW_URI
-    if "http://mlflow:" in uri_tracking and not os.getenv("DOCKER_FASTAPI_NAME"):
-        uri_tracking = uri_tracking.replace("http://mlflow:", "http://localhost:")
+
+    if "http://mlflow:" in uri_tracking:
+        try:
+            socket.getaddrinfo("mlflow", 5000)
+        except socket.gaierror:
+            log.info("⚠️ El DNS 'mlflow' no es accesible desde este entorno. Conmutando URI a 'localhost'.")
+            uri_tracking = uri_tracking.replace("http://mlflow:", "http://localhost:")
 
     mlflow.set_tracking_uri(uri_tracking)
     mlflow.set_experiment(C.MLFLOW_EXPERIMENT)
