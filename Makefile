@@ -21,12 +21,23 @@ IMAGE_NAME_LOCAL ?= renovacion_prestamo-image
 check-mlflow:
 	@STATUS=$$(docker inspect --format='{{.State.Health.Status}}' $(DOCKER_MLFLOW_NAME) 2>/dev/null || echo "not_found"); \
 	if [ "$$STATUS" = "healthy" ]; then \
-		echo "✓ MLflow ya esta activo y saludable. Continuando..."; \
+		echo "  MLflow ya esta activo y saludable. Continuando..."; \
 	else \
 		echo "⚠️ MLflow no esta listo (Estado: $$STATUS). Inicializando..."; \
 		$(MAKE) mlflow; \
 	fi
 
+# Verifica si el contenedor de la API ya existe y est a corriendo
+check-api:
+	@STATUS=$$(docker inspect --format='{{.State.Status}}' $(DOCKER_FASTAPI_NAME) 2>/dev/null || echo "not_found"); \
+	if [ "$$STATUS" = "running" ]; then \
+		echo "  El contenedor de la API ($(DOCKER_FASTAPI_NAME)) ya est a desplegado y corriendo."; \
+	else \
+		echo "El contenedor de la API no est a activo (Estado: $$STATUS). Construyendo..."; \
+		$(MAKE) docker; \
+		echo "=== Desplegando API (FastAPI) ==="; \
+		docker compose -f $(COMPOSE_FILE) up -d fastapi; \
+	fi
 
 # ── Pipeline CI/CD local ──────────────────────────────────────────────────────
 all: 
@@ -40,9 +51,8 @@ all:
 	$(MAKE) validate
 	@echo ""
 	@echo "=== [4/4] Construyendo y Desplegando API (FastAPI) ==="
-	$(MAKE) docker
-	docker compose -f $(COMPOSE_FILE) up -d fastapi
-	@echo "✓ Pipeline CI/CD local completado exitosamente."
+	$(MAKE) check-api
+	@echo "  Pipeline CI/CD local completado exitosamente."
 
 train: check-mlflow
 	@echo "=== Generando datos y entrenando modelo ==="
@@ -50,14 +60,15 @@ train: check-mlflow
 	docker exec -i $(DOCKER_FASTAPI_NAME) python src/train_model.py
 
 validate:
-	@echo "=== Validando métricas y Quality Gate ==="
+	@echo "=== Validando metricas y Quality Gate ==="
 	docker exec -i $(DOCKER_FASTAPI_NAME) python src/validate_model.py
 
 versions: check-mlflow
 	@echo "=== Revision de Versiones en MLflow ==="
 	docker exec -i $(DOCKER_FASTAPI_NAME) python src/manage_versions.py
 
-docker:@echo "=== Build de la imagen de la API ==="
+docker:
+	@echo "=== Build de la imagen de la API ==="
 	docker build \
 		--build-arg APP_VERSION=$(APP_VERSION) \
 		--build-arg PORT_LOCAL=$(PORT_LOCAL) \
