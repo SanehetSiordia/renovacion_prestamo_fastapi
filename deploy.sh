@@ -55,12 +55,18 @@ VERIFY_PORT_LOCAL=${PORT_LOCAL:-8085}
 VERIFY_PORT_MLFLOW=${MLFLOW_PORT:-5000}
 echo "  Enviando petición de prueba al endpoint de salud en el puerto $VERIFY_PORT_LOCAL..."
 
-if curl -sf "http://localhost:$VERIFY_PORT_LOCAL/health" | python3 -m json.tool; then
-    echo "  Healthcheck exitoso ✔"
-else
-    echo "❌ Error: El servicio FastAPI no respondió correctamente en el puerto $VERIFY_PORT_LOCAL"
-    exit 1
-fi
+for i in {1..10}; do
+    if curl -sf "http://localhost:$VERIFY_PORT_LOCAL/health" > /dev/null; then
+        echo "  Healthcheck de la API exitoso ✔"
+        break
+    fi
+    echo "  Esperando inicialización de la API (Intento $i/10)..."
+    sleep 3
+    if [ $i -eq 10 ]; then
+        echo "❌ Error: El servicio FastAPI no se desplegó de forma correcta en el puerto $VERIFY_PORT_LOCAL"
+        exit 1
+    fi
+done
 
 echo ""
 echo "===================================================================="

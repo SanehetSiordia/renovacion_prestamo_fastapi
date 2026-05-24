@@ -1,12 +1,11 @@
 # Makefile — Pipeline CI/CD Local + Desarrollo (Renovación de Préstamo)
 
-# Incluir variables del archivo .env de forma segura si existe
 -include .env
 export
 
 .PHONY: all train validate docker \
-        dev-up dev-down dev-logs dev-logs-api dev-logs-mlflow dev-ps \
-        deploy rollback clean help
+		dev-up dev-down dev-logs dev-logs-api dev-logs-mlflow dev-ps \
+        deploy rollback clean help check-mlflow mlflow
 
 COMPOSE_FILE = compose.yml
 
@@ -17,16 +16,22 @@ endif
 
 IMAGE_NAME_LOCAL ?= renovacion_prestamo-image
 
+# ── Validación Dinamica de MLflow ─────────────────────────────────────────────
+# Verifica si el contenedor ya esta saludable. Si no, invoca el target mlflow.
+check-mlflow:
+	@STATUS=$$(docker inspect --format='{{.State.Health.Status}}' $(DOCKER_MLFLOW_NAME) 2>/dev/null || echo "not_found"); \
+	if [ "$$STATUS" = "healthy" ]; then \
+		echo "✓ MLflow ya esta activo y saludable. Continuando..."; \
+	else \
+		echo "⚠️ MLflow no esta listo (Estado: $$STATUS). Inicializando..."; \
+		$(MAKE) mlflow; \
+	fi
+
+
 # ── Pipeline CI/CD local ──────────────────────────────────────────────────────
 all: 
-	@echo "=== [1/4] Iniciando Servidor MLflow de forma independiente ==="
-	docker compose -f $(COMPOSE_FILE) up -d mlflow
-	@echo "Esperando que MLflow pase el Healthcheck..."
-	@until [ "$$(docker inspect --format='{{.State.Health.Status}}' $(DOCKER_MLFLOW_NAME))" = "healthy" ]; do \
-		echo "MLflow está iniciando... esperando 3 segundos mas."; \
-		sleep 3; \
-	done
-	@echo "✓ MLflow arriba y saludable."
+	@echo "=== [1/4] Asegurando Servidor MLflow ==="
+	$(MAKE) check-mlflow
 	@echo ""
 	@echo "=== [2/4] Ejecutando Pipeline de Entrenamiento ==="
 	$(MAKE) train
@@ -39,19 +44,16 @@ all:
 	docker compose -f $(COMPOSE_FILE) up -d fastapi
 	@echo "✓ Pipeline CI/CD local completado exitosamente."
 
-train:
-	$(MAKE) mlflow
+train: check-mlflow
 	@echo "=== Generando datos y entrenando modelo ==="
 	python src/manage_data.py
 	python src/train_model.py
 
 validate:
-	$(MAKE) mlflow
 	@echo "=== Validando métricas y Quality Gate ==="
 	python src/validate_model.py
 
-versions:
-	$(MAKE) mlflow
+versions: check-mlflow
 	@echo "=== Revision de Versiones en MLflow ==="
 	python src/manage_versions.py
 
@@ -91,14 +93,14 @@ dev-logs-mlflow:
 dev-ps:
 	docker compose -f $(COMPOSE_FILE) ps
 mlflow:
-	@echo "=== [1/2] Iniciando Servidor MLflow de forma independiente ==="
+	@echo "=== Iniciando Servidor MLflow de forma independiente ==="
 	docker compose -f $(COMPOSE_FILE) up -d mlflow
-	@echo "=== [2/2] Esperando que MLflow pase el Healthcheck... ==="
+	@echo "=== Esperando que MLflow pase el Healthcheck... ==="
 	@until [ "$$(docker inspect --format='{{.State.Health.Status}}' $(DOCKER_MLFLOW_NAME))" = "healthy" ]; do \
-		echo "MLflow está iniciando... esperando 3 segundos mas."; \
+		echo "MLflow esta iniciando... esperando 3 segundos mas."; \
 		sleep 3; \
 	done
-	@echo "✓ MLflow arriba y saludable."
+	@echo "MLflow arriba y saludable."
 
 
 # ── Flujo de Despliegue y Orquestación (deploy.sh) ───────────────────────────
@@ -145,6 +147,6 @@ help:
 	@echo ""
 	@echo "Despliegue y Control de Versiones:"
 	@echo "  make deploy VERSION=1.0.0    — Ejecuta las fases de validación del script deploy.sh"
-	@echo "  make rollback VERSION=1.0.0  — Reasigna tags de imágenes y levanta la versión previa"
+	@echo "  make rollback VERSION=1.0.0  — Reasigna tags de imagenes y levanta la versión previa"
 	@echo "  make clean                   — Remueve basura de compilación y cachés de python"
 	@echo "===================================================================="
