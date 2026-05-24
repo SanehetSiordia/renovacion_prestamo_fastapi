@@ -40,30 +40,19 @@ check-api:
 	fi
 
 # ── Pipeline CI/CD local ──────────────────────────────────────────────────────
-all: 
-	@echo "=== [1/4] Asegurando Servidor MLflow ==="
-	$(MAKE) check-mlflow
-	@echo ""
-	@echo "=== [2/4] Asegurando Entorno de la API (FastAPI) ==="
-	$(MAKE) check-api
-	@echo ""
-	@echo "=== [3/4] Ejecutando Pipeline de Entrenamiento ==="
-	$(MAKE) train
-	@echo ""
-	@echo "=== [4/4] Validando Métricas (Quality Gate) ==="
-	$(MAKE) validate
-	@echo "✓ Pipeline CI/CD local completado exitosamente."
+all: train validate versions docker
+	@echo "✓ Pipeline CI/CD local completado exitosamente de forma aislada."
 
-train: check-mlflow
+train: check-mlflow check-api
 	@echo "=== Generando datos y entrenando modelo ==="
 	docker exec -i $(DOCKER_FASTAPI_NAME) python src/manage_data.py
 	docker exec -i $(DOCKER_FASTAPI_NAME) python src/train_model.py
 
-validate:
+validate: check-api
 	@echo "=== Validando metricas y Quality Gate ==="
 	docker exec -i $(DOCKER_FASTAPI_NAME) python src/validate_model.py
 
-versions: check-mlflow
+versions: check-mlflow check-api
 	@echo "=== Revision de Versiones en MLflow ==="
 	docker exec -i $(DOCKER_FASTAPI_NAME) python src/manage_versions.py
 
