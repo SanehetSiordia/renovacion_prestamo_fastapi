@@ -52,8 +52,6 @@ MANIFEST
 data/processed/*
 models/
 models/*
-artifacts/
-artifacts/*
 *.h5
 *.pkl
 *.skops

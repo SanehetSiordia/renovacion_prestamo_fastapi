@@ -27,13 +27,13 @@ check-mlflow:
 		$(MAKE) mlflow; \
 	fi
 
-# Verifica si el contenedor de la API ya existe y est a corriendo
+# Verifica si el contenedor de la API ya existe y esta corriendo
 check-api:
 	@STATUS=$$(docker inspect --format='{{.State.Status}}' $(DOCKER_FASTAPI_NAME) 2>/dev/null || echo "not_found"); \
 	if [ "$$STATUS" = "running" ]; then \
-		echo "  El contenedor de la API ($(DOCKER_FASTAPI_NAME)) ya est a desplegado y corriendo."; \
+		echo "  El contenedor de la API ($(DOCKER_FASTAPI_NAME)) ya esta desplegado y corriendo."; \
 	else \
-		echo "El contenedor de la API no est a activo (Estado: $$STATUS). Construyendo..."; \
+		echo "El contenedor de la API no esta activo (Estado: $$STATUS). Construyendo..."; \
 		$(MAKE) docker; \
 		echo "=== Desplegando API (FastAPI) ==="; \
 		docker compose -f $(COMPOSE_FILE) up -d fastapi; \
@@ -51,21 +51,22 @@ all:
 	$(MAKE) validate
 	@echo ""
 	@echo "=== [4/4] Construyendo y Desplegando API (FastAPI) ==="
-	$(MAKE) check-api
-	@echo "  Pipeline CI/CD local completado exitosamente."
+	$(MAKE) docker
+	docker compose -f $(COMPOSE_FILE) up -d fastapi
+	@echo "✓ Pipeline CI/CD local completado exitosamente."
 
 train: check-mlflow
 	@echo "=== Generando datos y entrenando modelo ==="
-	docker exec -i $(DOCKER_FASTAPI_NAME) python src/manage_data.py
-	docker exec -i $(DOCKER_FASTAPI_NAME) python src/train_model.py
+	src/manage_data.py
+	src/train_model.py
 
 validate:
 	@echo "=== Validando metricas y Quality Gate ==="
-	docker exec -i $(DOCKER_FASTAPI_NAME) python src/validate_model.py
+	src/validate_model.py
 
 versions: check-mlflow
 	@echo "=== Revision de Versiones en MLflow ==="
-	docker exec -i $(DOCKER_FASTAPI_NAME) python src/manage_versions.py
+	src/manage_versions.py
 
 docker:
 	@echo "=== Build de la imagen de la API ==="
