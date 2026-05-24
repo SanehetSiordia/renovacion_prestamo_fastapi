@@ -46,16 +46,16 @@ all:
 
 train: check-mlflow
 	@echo "=== Generando datos y entrenando modelo ==="
-	python src/manage_data.py
-	python src/train_model.py
+	docker exec -i $(DOCKER_FASTAPI_NAME) python src/manage_data.py
+	docker exec -i $(DOCKER_FASTAPI_NAME) python src/train_model.py
 
 validate:
 	@echo "=== Validando métricas y Quality Gate ==="
-	python src/validate_model.py
+	docker exec -i $(DOCKER_FASTAPI_NAME) python src/validate_model.py
 
 versions: check-mlflow
 	@echo "=== Revision de Versiones en MLflow ==="
-	python src/manage_versions.py
+	docker exec -i $(DOCKER_FASTAPI_NAME) python src/manage_versions.py
 
 docker:@echo "=== Build de la imagen de la API ==="
 	docker build \
