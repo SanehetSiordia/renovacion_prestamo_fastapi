@@ -88,7 +88,7 @@ TECNICA_BALANCEO = ['undersampling', 'oversampling','smote']
 # ── MLflow ────────────────────────────────────────────────────────────────────
 MLFLOW_EXPERIMENT= os.getenv("MLFLOW_EXPERIMENT", "renovacion_prestamo-sinhue")
 MLFLOW_RUN_NAME   = os.getenv('PIPELINE_VERSION', 'run-local')
-MLFLOW_URI = os.getenv("MLFLOW_TRACKING_URI", "http://localhost:5000")
+MLFLOW_URI = os.getenv("MLFLOW_TRACKING_URI", "http://mlflow:5000")
 
 # ── Validar Modelo ─────────────────────────────────────────────────────────────
 UMBRAL_MIN=float(os.getenv("UMBRAL_MIN","0.6"))

@@ -48,6 +48,8 @@ share/python-wheels/
 MANIFEST
 
 # local data and models
+
+data/processed/*
 models/
 models/*
 artifacts/
@@ -57,7 +59,6 @@ artifacts/*
 *.skops
 *.pth
 *.onnx
-*.csv
 
 # DVC local state and cache
 .dvc/config.local
@@ -130,7 +131,7 @@ celerybeat.pid
 *.sage.py
 
 # Environments
-.env
+#.env
 .envrc
 .venv
 env/

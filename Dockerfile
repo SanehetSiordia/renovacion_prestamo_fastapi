@@ -14,7 +14,7 @@ ENV PIP_DISABLE_PIP_VERSION_CHECK=1
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
 ENV APP_VERSION=${APP_VERSION}
-ENV PORT=${PORT_REMOTE}
+ENV PORT_REMOTE=${PORT_REMOTE}
 ENV PORT_LOCAL=${PORT_LOCAL}
 
 WORKDIR /app
@@ -23,8 +23,6 @@ COPY requirements.txt .
 
 # ── Instalar dependencias del sistema (mínimas) ───────────────────────────────
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    iputils-ping \
-    telnet \
     gcc \
     python3-dev \
     && pip install --no-cache-dir -r requirements.txt \
@@ -33,9 +31,6 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 #COPIAR ARCHIVOS EN DIRECTORIO LOCAL EN DIRECTORIO DE LA IMAGEN
 COPY . .
-
-#PERMISOS DE EJECUCION DE SCRIPTS DE ENTRADA
-#RUN chmod +x entrypoint.sh
 
 #EXPOSICION DEL PUERTO DE LA IMAGEN
 EXPOSE 8000
