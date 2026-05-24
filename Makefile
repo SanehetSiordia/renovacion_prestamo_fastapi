@@ -44,29 +44,28 @@ all:
 	@echo "=== [1/4] Asegurando Servidor MLflow ==="
 	$(MAKE) check-mlflow
 	@echo ""
-	@echo "=== [2/4] Ejecutando Pipeline de Entrenamiento ==="
+	@echo "=== [2/4] Asegurando Entorno de la API (FastAPI) ==="
+	$(MAKE) check-api
+	@echo ""
+	@echo "=== [3/4] Ejecutando Pipeline de Entrenamiento ==="
 	$(MAKE) train
 	@echo ""
-	@echo "=== [3/4] Validando Métricas (Quality Gate) ==="
+	@echo "=== [4/4] Validando Métricas (Quality Gate) ==="
 	$(MAKE) validate
-	@echo ""
-	@echo "=== [4/4] Construyendo y Desplegando API (FastAPI) ==="
-	$(MAKE) docker
-	docker compose -f $(COMPOSE_FILE) up -d fastapi
 	@echo "✓ Pipeline CI/CD local completado exitosamente."
 
 train: check-mlflow
 	@echo "=== Generando datos y entrenando modelo ==="
-	src/manage_data.py
-	src/train_model.py
+	docker exec -i $(DOCKER_FASTAPI_NAME) python src/manage_data.py
+	docker exec -i $(DOCKER_FASTAPI_NAME) python src/train_model.py
 
 validate:
 	@echo "=== Validando metricas y Quality Gate ==="
-	src/validate_model.py
+	docker exec -i $(DOCKER_FASTAPI_NAME) python src/validate_model.py
 
 versions: check-mlflow
 	@echo "=== Revision de Versiones en MLflow ==="
-	src/manage_versions.py
+	docker exec -i $(DOCKER_FASTAPI_NAME) python src/manage_versions.py
 
 docker:
 	@echo "=== Build de la imagen de la API ==="
