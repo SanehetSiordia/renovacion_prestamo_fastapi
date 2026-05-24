@@ -1,6 +1,6 @@
 # renovacion_prestamo_fastapi
 Analisis de caso de negocio de renovacion de prestamo con algoritmos de machine learning utilizando fastapi dockerizado
-
+Proyecto con arquitectura 100% Hermetica con Docker.
 ---
 
 ## 🛠️ Stack Tecnológico
@@ -9,10 +9,7 @@ Analisis de caso de negocio de renovacion de prestamo con algoritmos de machine 
 ![Git](https://img.shields.io/badge/Git-control%20de%20versiones-orange?logo=git)
 ![Docker](https://img.shields.io/badge/Docker-contenedores-blue?logo=docker)
 ![MLflow](https://img.shields.io/badge/MLflow-tracking-lightblue?logo=mlflow)
-![DVC](https://img.shields.io/badge/DVC-data%20versioning-purple)
 ![FastAPI](https://img.shields.io/badge/FastAPI-serving-green?logo=fastapi)
-![GitHub Actions](https://img.shields.io/badge/GitHub%20Actions-CI%2FCD-black?logo=github)
-![EvidentlyAI](https://img.shields.io/badge/EvidentlyAI-monitoreo-red)
 
 ---
 
@@ -22,7 +19,7 @@ Analisis de caso de negocio de renovacion de prestamo con algoritmos de machine 
 - Cuenta GitHub
 - Docker
 - VS Code
-- Conocimientos básicos de Python, Pandas y Scikit-learn
+- Make
 
 ### Instalación del entorno
 
@@ -30,11 +27,15 @@ Analisis de caso de negocio de renovacion de prestamo con algoritmos de machine 
 # Clonar el repositorio
 git clone https://github.com/SanehetSiordia/renovacion_prestamo_fastapi.git
 cd renovacion_prestamo_fastapi
-# Instalar dependencias
-pip install -r requirements.txt
-
-# Crear entorno virtual
-docker compose up --build
+# Instalar Make con el comando en CMD
+winget install ezwinports.make
+# Ejecutar comando Make
+Make all
+#Validar entornos virtuales desde Browser:
+http://localhost:8085/          --FastApi Home
+http://localhost:8085/docs      --FastApi OpenApi
+http://localhost:8085/health    --FastApi Healthchek
+http://localhost:5000/          --MLFLOW GUI
 
 ```
 
