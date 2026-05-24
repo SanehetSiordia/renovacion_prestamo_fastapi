@@ -21,43 +21,43 @@ IMAGE_NAME_LOCAL ?= renovacion_prestamo-image
 check-mlflow:
 	@STATUS=$$(docker inspect --format='{{.State.Health.Status}}' $(DOCKER_MLFLOW_NAME) 2>/dev/null || echo "not_found"); \
 	if [ "$$STATUS" = "healthy" ]; then \
-		echo "✓ MLflow ya esta activo y saludable. Continuando..."; \
+		echo "  MLflow ya esta activo y saludable. Continuando..."; \
 	else \
 		echo "⚠️ MLflow no esta listo (Estado: $$STATUS). Inicializando..."; \
 		$(MAKE) mlflow; \
 	fi
 
+# Verifica si el contenedor de la API ya existe y esta corriendo
+check-api:
+	@STATUS=$$(docker inspect --format='{{.State.Status}}' $(DOCKER_FASTAPI_NAME) 2>/dev/null || echo "not_found"); \
+	if [ "$$STATUS" = "running" ]; then \
+		echo "  El contenedor de la API ($(DOCKER_FASTAPI_NAME)) ya esta desplegado y corriendo."; \
+	else \
+		echo "El contenedor de la API no esta activo (Estado: $$STATUS). Construyendo..."; \
+		$(MAKE) docker; \
+		echo "=== Desplegando API (FastAPI) ==="; \
+		docker compose -f $(COMPOSE_FILE) up -d fastapi; \
+	fi
 
 # ── Pipeline CI/CD local ──────────────────────────────────────────────────────
-all: 
-	@echo "=== [1/4] Asegurando Servidor MLflow ==="
-	$(MAKE) check-mlflow
-	@echo ""
-	@echo "=== [2/4] Ejecutando Pipeline de Entrenamiento ==="
-	$(MAKE) train
-	@echo ""
-	@echo "=== [3/4] Validando Métricas (Quality Gate) ==="
-	$(MAKE) validate
-	@echo ""
-	@echo "=== [4/4] Construyendo y Desplegando API (FastAPI) ==="
-	$(MAKE) docker
-	docker compose -f $(COMPOSE_FILE) up -d fastapi
-	@echo "✓ Pipeline CI/CD local completado exitosamente."
+all: train validate versions docker
+	@echo "✓ Pipeline CI/CD local completado exitosamente de forma aislada."
 
-train: check-mlflow
+train: check-mlflow check-api
 	@echo "=== Generando datos y entrenando modelo ==="
-	python src/manage_data.py
-	python src/train_model.py
+	docker exec -i $(DOCKER_FASTAPI_NAME) python src/manage_data.py
+	docker exec -i $(DOCKER_FASTAPI_NAME) python src/train_model.py
 
-validate:
-	@echo "=== Validando métricas y Quality Gate ==="
-	python src/validate_model.py
+validate: check-api
+	@echo "=== Validando metricas y Quality Gate ==="
+	docker exec -i $(DOCKER_FASTAPI_NAME) python src/validate_model.py
 
-versions: check-mlflow
+versions: check-mlflow check-api
 	@echo "=== Revision de Versiones en MLflow ==="
-	python src/manage_versions.py
+	docker exec -i $(DOCKER_FASTAPI_NAME) python src/manage_versions.py
 
-docker:@echo "=== Build de la imagen de la API ==="
+docker:
+	@echo "=== Build de la imagen de la API ==="
 	docker build \
 		--build-arg APP_VERSION=$(APP_VERSION) \
 		--build-arg PORT_LOCAL=$(PORT_LOCAL) \

@@ -56,12 +56,12 @@ def quality_gate(algoritmo:dict,hiperparametros:dict,metricas:dict) -> None:
 
     if recall < umbral:
         print(f"\n FALLO: Recall {recall:.4f} < umbral {umbral}")
-        print(" El pipeline CI/CD se detiene. No se construye Docker.")
+        print(" El pipeline CI/CD se detiene..")
         sys.exit(1)
     
     print("=" * 50)
     print(f"\n APROBADO: Recall {recall:.4f} >= {umbral}")
-    print(" Pipeline CI/CD continúa al build de Docker.")    
+    print(" Pipeline CI/CD continúa.")    
     print("=" * 50)
 
 # ── Función principal ───────────────────────────────────────────────────── 
