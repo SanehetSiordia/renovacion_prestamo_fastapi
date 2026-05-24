@@ -1,4 +1,28 @@
 services: 
+  mlflow:
+    env_file:
+      - .env
+    image: python:3.12-slim
+    container_name: ${DOCKER_MLFLOW_NAME}
+    environment:
+      - MLFLOW_TRACKING_URI=${MLFLOW_TRACKING_URI_DOCKER}  
+    volumes:
+      - ./mlruns:/mlruns      
+    command: 
+      - "bash"
+      - "-c"
+      - "pip install --no-cache-dir mlflow -q && mlflow server --host 0.0.0.0 --port 5000 --backend-store-uri sqlite:////mlruns/mlflow.db --default-artifact-root /mlruns/artifacts --allowed-hosts '*'"
+    ports:
+      - '5000:5000'
+    networks:
+      - ${APP_NETWORK_NAME}
+    healthcheck:
+      test: ["CMD", "python3", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:5000/health', timeout=2)"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 60s
+
   fastapi:
     env_file:
       - .env
@@ -12,7 +36,7 @@ services:
     container_name: ${DOCKER_FASTAPI_NAME}
     restart: always
     environment:
-      - PIPELINE_VERSION=v1.0.0
+      - PIPELINE_VERSION=${PIPELINE_VERSION}
       - PORT_LOCAL=${PORT_LOCAL}
       - PORT_REMOTE=${PORT_REMOTE}
       - PYTHONPATH=/app
@@ -23,34 +47,11 @@ services:
       - .:/app 
       - /app/__pycache__
       - /app/.pytest_cache
-      - ./artifacts:/app/artifacts
-      - ./data:/app/data
     networks:
       - ${APP_NETWORK_NAME}
     depends_on:
       mlflow:
         condition: service_healthy
-
-  mlflow:
-    env_file:
-      - .env
-    image: python:3.12-slim
-    container_name: ${DOCKER_MLFLOW_NAME}
-    environment:
-      - GUNICORN_CMD_ARGS=--forwarded-allow-ips=* --allow-code-sharing
-    command: bash -c "pip install mlflow -q && mlflow server --host 0.0.0.0 --port 5000 --backend-store-uri sqlite:///mlruns/mlflow.db --default-artifact-root file:///mlruns/artifacts --allowed-hosts '*'"
-    ports:
-      - '5000:5000'
-    volumes:
-      - ./mlruns:/mlruns
-    networks:
-      - ${APP_NETWORK_NAME}
-    healthcheck:
-      test: ["CMD-SHELL", "bash -c '</dev/tcp/127.0.0.1/5000'"]
-      interval: 5s
-      timeout: 3s
-      retries: 5
-      start_period: 90s
 
 networks:
   renovacion_prestamo-net:

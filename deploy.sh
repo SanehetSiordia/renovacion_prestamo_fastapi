@@ -6,7 +6,6 @@ set -e  # salir si cualquier comando falla
 ENV_FILE=".env"
 if [ -f "$ENV_FILE" ]; then
     echo "Cargando configuración local desde $ENV_FILE..."
-    # Exporta las variables ignorando líneas vacías y comentarios
     export $(grep -v '^#' "$ENV_FILE" | xargs)
 else
     echo "⚠️ Advertencia: No se encontró el archivo $ENV_FILE. Se usarán variables del sistema."
@@ -27,19 +26,28 @@ echo "  Versión actual: $CURRENT"
 
 # ── PASO 2: Build de todas las imágenes ──────────────────────────────────────
 echo "[2/5] Construyendo imágenes Docker..."
-docker compose -f $COMPOSE_FILE build
+docker compose -f $COMPOSE_FILE build --build-arg APP_VERSION="$APP_VERSION" --build-arg PORT_LOCAL="$PORT_LOCAL" --build-arg PORT_REMOTE="$PORT_REMOTE"
 echo "  Build OK"
 
-# ── PASO 3: Levantar el entorno --------──────────────────────────────────────
-echo "[3/5] Levantando entorno completo..."
-docker compose -f $COMPOSE_FILE up --build -d
-echo "  Esperando 30 segundos para que los servicios inicien..."
-sleep 30
+# ── PASO 3: Levantar el entorno Secuencialmente──────────────────────────────────────
+echo "[3/5] Levantando servicios de forma secuencial..."
+docker compose -f $COMPOSE_FILE up -d mlflow
+echo "  Esperando que el healthcheck de MLflow responda exitosamente..."
+until [ "$(docker inspect --format='{{.State.Health.Status}}' "$DOCKER_MLFLOW_NAME")" = "healthy" ]; do
+    sleep 2
+done
+
+docker compose -f $COMPOSE_FILE up -d fastapi
+echo "  Servicios instanciados."
 
 # ── PASO 4: Tag de la versión ─────────────────────────────────────────────────
-echo "[4/5] Tagging imagen de la versión como latest para consistencia..."
-docker tag "$IMAGE_NAME:$VERSION" "$IMAGE_NAME:latest"
-echo "  Imagen taggeada exitosamente: $IMAGE_NAME:latest"
+echo "[4/5] Aplicando etiquetas estables de Docker..."
+if docker image inspect "$IMAGE_NAME:$VERSION" >/dev/null 2>&1; then
+    docker tag "$IMAGE_NAME:$VERSION" "$IMAGE_NAME:latest"
+    echo "  Imagen taggeada exitosamente: $IMAGE_NAME:latest"
+else
+    echo "  ⚠️ No se encontró la etiqueta estática de versión $VERSION. Saltando retaggeo local."
+fi
 
 # ── PASO 5: Verificación final ────────────────────────────────────────────────
 echo "[5/5] Verificación final..."

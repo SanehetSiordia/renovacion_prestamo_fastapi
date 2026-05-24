@@ -158,16 +158,19 @@ def modelar_mlflow(df_train: pd.DataFrame,
             df_train_smote[C.TARGET],
         ),
     }
+
     uri_tracking = C.MLFLOW_URI
 
     if "http://mlflow:" in uri_tracking:
         try:
             socket.getaddrinfo("mlflow", 5000)
+            log.info("📡 Entorno Container detectado. Usando URI nativa: mlflow")
         except socket.gaierror:
-            log.info("⚠️ El DNS 'mlflow' no es accesible desde este entorno. Conmutando URI a 'localhost'.")
             uri_tracking = uri_tracking.replace("http://mlflow:", "http://localhost:")
-
-    mlflow.set_tracking_uri(C.MLFLOW_URI)
+            log.info(f"⚠️ Entorno Host/Codespace detectado. Conmutando URI global a: {uri_tracking}")
+            
+    os.environ["MLFLOW_TRACKING_URI"] = uri_tracking
+    mlflow.set_tracking_uri(uri_tracking)   
     mlflow.set_experiment(C.MLFLOW_EXPERIMENT)
 
     with mlflow.start_run(run_name=C.MLFLOW_RUN_NAME) as run:
@@ -264,17 +267,19 @@ def optimizar_hiperparametros_mlflow(
             f"No se encontraron hiperparámetros para {nombre_modelo}. Se retornará el modelo base."
         )
         return mejor_modelo_base, metricas_modelo
-    
+
     uri_tracking = C.MLFLOW_URI
 
     if "http://mlflow:" in uri_tracking:
         try:
             socket.getaddrinfo("mlflow", 5000)
+            log.info("📡 Entorno Container detectado. Usando URI nativa: mlflow")
         except socket.gaierror:
-            log.info("⚠️ El DNS 'mlflow' no es accesible desde este entorno. Conmutando URI a 'localhost'.")
             uri_tracking = uri_tracking.replace("http://mlflow:", "http://localhost:")
-
-    mlflow.set_tracking_uri(uri_tracking)
+            log.info(f"⚠️ Entorno Host/Codespace detectado. Conmutando URI global a: {uri_tracking}")
+            
+    os.environ["MLFLOW_TRACKING_URI"] = uri_tracking
+    mlflow.set_tracking_uri(uri_tracking)   
     mlflow.set_experiment(C.MLFLOW_EXPERIMENT)
     run_name_tuning = f"Tuning_{nombre_modelo}_{C.MLFLOW_RUN_NAME}"
 

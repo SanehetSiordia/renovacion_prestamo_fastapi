@@ -18,70 +18,90 @@ endif
 IMAGE_NAME_LOCAL ?= renovacion_prestamo-image
 
 # ── Pipeline CI/CD local ──────────────────────────────────────────────────────
-all: train validate docker
+all: 
+	@echo "=== [1/4] Iniciando Servidor MLflow de forma independiente ==="
+	docker compose -f $(COMPOSE_FILE) up -d mlflow
+	@echo "Esperando que MLflow pase el Healthcheck..."
+	@until [ "$$(docker inspect --format='{{.State.Health.Status}}' $(DOCKER_MLFLOW_NAME))" = "healthy" ]; do \
+		echo "MLflow está iniciando... esperando 3 segundos mas."; \
+		sleep 3; \
+	done
+	@echo "✓ MLflow arriba y saludable."
 	@echo ""
-	@echo "✓ Pipeline CI/CD local completado. Listo para git push."
+	@echo "=== [2/4] Ejecutando Pipeline de Entrenamiento ==="
+	$(MAKE) train
+	@echo ""
+	@echo "=== [3/4] Validando Métricas (Quality Gate) ==="
+	$(MAKE) validate
+	@echo ""
+	@echo "=== [4/4] Construyendo y Desplegando API (FastAPI) ==="
+	$(MAKE) docker
+	docker compose -f $(COMPOSE_FILE) up -d fastapi
+	@echo "✓ Pipeline CI/CD local completado exitosamente."
 
 train:
+	$(MAKE) mlflow
 	@echo "=== Generando datos y entrenando modelo ==="
 	python src/manage_data.py
 	python src/train_model.py
 
 validate:
+	$(MAKE) mlflow
 	@echo "=== Validando métricas y Quality Gate ==="
 	python src/validate_model.py
 
 versions:
+	$(MAKE) mlflow
 	@echo "=== Revision de Versiones en MLflow ==="
 	python src/manage_versions.py
 
-docker:
-	@echo "=== Build de la imagen de la API ==="
+docker:@echo "=== Build de la imagen de la API ==="
 	docker build \
 		--build-arg APP_VERSION=$(APP_VERSION) \
 		--build-arg PORT_LOCAL=$(PORT_LOCAL) \
 		--build-arg PORT_REMOTE=$(PORT_REMOTE) \
-		-t $(IMAGE_NAME_LOCAL):local .
+		-t $(IMAGE_NAME_LOCAL):$(VERSION) .
 
 # ── Ambiente Desarrollo (Docker Compose) ──────────────────────────────────────
 
-## Levantar entorno completo desarrollo (FastAPI + MLflow)
 dev-up:
 	@echo "=== Levantando entorno de desarrollo para $(APP_NAME) ==="
-	@echo "  Nota en Codespaces: los puertos $(PORT_LOCAL) y $(MLFLOW_PORT) se expondrán automáticamente."
-	docker compose -f $(COMPOSE_FILE) up --build -d
-	@echo "  Esperando que los servicios e hilos de salud inicien (120 s)..."
-	sleep 120
-	@echo ""
+	docker compose -f $(COMPOSE_FILE) up -d mlflow
+	@echo "Esperando inicialización de MLflow..."
+	@until [ "$$(docker inspect --format='{{.State.Health.Status}}' $(DOCKER_MLFLOW_NAME))" = "healthy" ]; do sleep 2; done
+	@echo "Levantando servicio FastAPI..."
+	docker compose -f $(COMPOSE_FILE) up -d fastapi
 	@echo "=== Entorno listo ==="
 	@echo "  API   : http://localhost:$(PORT_LOCAL)"
-	@echo "  Docs  : http://localhost:$(PORT_LOCAL)/docs"
 	@echo "  MLflow: http://localhost:$(MLFLOW_PORT)"
 
-## Bajar entorno desarrollo y eliminar volúmenes persistentes de Docker
 dev-down:
 	docker compose -f $(COMPOSE_FILE) down -v
 	@echo "=== Entorno detenido y volúmenes purgados ==="
 
-## Ver logs en tiempo real de todos los servicios coordinados
 dev-logs:
 	docker compose -f $(COMPOSE_FILE) logs -f
 
-## Ver logs específicos de la API (mapeado al servicio 'fastapi' del compose.yml)
 dev-logs-api:
 	docker compose -f $(COMPOSE_FILE) logs -f fastapi
 
-## Ver logs específicos del servidor de tracking MLflow
 dev-logs-mlflow:
 	docker compose -f $(COMPOSE_FILE) logs -f mlflow
 
-## Ver estado del clúster de contenedores
 dev-ps:
 	docker compose -f $(COMPOSE_FILE) ps
+mlflow:
+	@echo "=== [1/2] Iniciando Servidor MLflow de forma independiente ==="
+	docker compose -f $(COMPOSE_FILE) up -d mlflow
+	@echo "=== [2/2] Esperando que MLflow pase el Healthcheck... ==="
+	@until [ "$$(docker inspect --format='{{.State.Health.Status}}' $(DOCKER_MLFLOW_NAME))" = "healthy" ]; do \
+		echo "MLflow está iniciando... esperando 3 segundos mas."; \
+		sleep 3; \
+	done
+	@echo "✓ MLflow arriba y saludable."
 
 
 # ── Flujo de Despliegue y Orquestación (deploy.sh) ───────────────────────────
-
 ## Flujo completo de despliegue manual encapsulado en bash
 deploy:
 	@chmod +x deploy.sh
@@ -93,12 +113,12 @@ rollback:
 	docker compose -f $(COMPOSE_FILE) down
 	docker tag $(IMAGE_NAME_LOCAL):$(VERSION) $(IMAGE_NAME_LOCAL):latest
 	docker compose -f $(COMPOSE_FILE) up -d
-	@echo "=== Rollback completado hacia $(IMAGE_NAME_LOCAL):$(VERSION) ==="
+	@echo "=== Rollback completado ==="
 
 # ── Limpieza Segura del Espacio de Trabajo ────────────────────────────────────
 clean:
 	@echo "=== Limpiando archivos temporales y cachés ==="
-	rm -rf artifacts/ data/processed mlruns/ __pycache__ .coverage htmlcov/
+	rm -rf artifacts/* data/processed/* mlruns/* __pycache__ .coverage htmlcov/
 	find . -name "*.pyc" -delete
 	find . -name "__pycache__" -type d -exec rm -rf {} +
 	@echo "Limpieza completada."
