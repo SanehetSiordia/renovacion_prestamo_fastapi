@@ -65,18 +65,21 @@ MODELOS = {
 
 HIPERPARAMETROS = {
     "DecisionTree": {
+        "random_state": [C.RANDOM_STATE],
         "max_depth": [4, 6, 8, 10, None],
         "criterion": ["gini", "entropy"],
         "min_samples_split": [2, 5, 10],
     },
     "RandomForest": {
-        "n_estimators": [50, 100, 150],
+        "random_state": [C.RANDOM_STATE],
+        "n_estimators": [10, 50, 100],
         "max_depth": [None, 10, 20],
         "min_samples_leaf": [1, 2, 4],
         "class_weight": ["balanced"],
     },
     "XGBoost": {
-        "n_estimators": [50, 100, 200],
+        "random_state": [C.RANDOM_STATE],
+        "n_estimators": [10, 50, 100],
         "max_depth": [3, 4, 6],
         "learning_rate": [0.01, 0.1, 0.2],
         "subsample": [0.5, 0.8, 1.0],
@@ -240,7 +243,7 @@ def modelar_mlflow(df_train: pd.DataFrame,
             ]
         )
         
-    return cast(ClassifierMixin, mejor_modelo_global), mejor_nombre_modelo, df_train_best, mejor_tipo_dataset
+    return cast(ClassifierMixin, mejor_modelo_global), mejor_nombre_modelo, df_train_best, mejor_tipo_dataset, mejor_recall
 
 def optimizar_hiperparametros_mlflow(
     mejor_modelo_base: ClassifierMixin,
@@ -249,6 +252,7 @@ def optimizar_hiperparametros_mlflow(
     X_test: pd.DataFrame,
     y_test: pd.Series,
     nombre_mejor_balanceo: str,
+    recall_base: float,
 ) -> Tuple[ClassifierMixin, dict]:
 
     log.info(
@@ -289,7 +293,7 @@ def optimizar_hiperparametros_mlflow(
             param_grid=param_grid,
             scoring="recall",
             cv=C.K_FEATURES,
-            n_jobs=-1,
+            n_jobs=1,
             verbose=1,
         )
 
@@ -314,17 +318,41 @@ def optimizar_hiperparametros_mlflow(
             f"Resultado Optimizado -> F1={f1} | RECALL OPTIMIZADO={recall} | Accuracy={accuracy} | Roc AUC={roc_auc}"
         )
 
-        mlflow.log_params(mejores_params)
+        #Comparativa de modelo base vs modelo tunning
+        if recall > recall_base:
+            log.info(f"El Tuning mejoró el Recall base ({recall} > {recall_base}). Seleccionando modelo optimizado.")
+            modelo_final = modelo_tuning
+            hiperparametros_finales = mejores_params
+            es_optimizado = True
+        else:
+            log.warning(
+                f"El Tuning sufrió sobreajuste ({recall} <= {recall_base}). "
+                f"Se descarta el tuning y se selecciona el MODELO BASE ORIGINAL."
+            )
+            modelo_final = mejor_modelo_base
+            hiperparametros_finales = mejor_modelo_base.get_params() if hasattr(mejor_modelo_base, 'get_params') else {}
+            
+            y_pred_base = mejor_modelo_base.predict(X_test)
+            accuracy = round(float(accuracy_score(y_test, y_pred_base)), 4)
+            f1 = round(float(f1_score(y_test, y_pred_base, zero_division=0)), 4)
+            recall = recall_base
+            roc_auc = round(float(roc_auc_score(y_test, y_pred_base)), 4)
+            es_optimizado = False
+
+        mlflow.log_params(hiperparametros_finales)
         mlflow.log_param("algoritmo_optimizado", nombre_modelo)
+        mlflow.log_param("tuning_aplicado", str(es_optimizado))
         mlflow.log_metrics({"accuracy": accuracy, "f1": f1, "recall": recall, "roc_auc": roc_auc})
         
         # ── registro de firmas y metadatos en MLFLOW ───────────────────
-        y_pred_df = pd.DataFrame(y_pred, columns=[C.TARGET], index=X_test.index)
+        y_pred_final = modelo_final.predict(X_test)
+        y_pred_df = pd.DataFrame(y_pred_final, columns=[C.TARGET], index=X_test.index)
         firma_modelo = infer_signature(X_test, y_pred_df)
         
+        nombre_artefacto = "modelo_optimizado" if es_optimizado else "modelo_base_ganador"
         model_info = ml_learn.log_model(
-            modelo_tuning,
-            name="modelo_optimizado",
+            modelo_final,
+            name=nombre_artefacto,
             serialization_format="skops",
             skops_trusted_types=[
                 "xgboost.sklearn.XGBClassifier",
@@ -344,9 +372,11 @@ def optimizar_hiperparametros_mlflow(
 
         client = mlflow.MlflowClient()
         
+        origen_txt = "Optimizado mediante GridSearchCV" if es_optimizado else "Base (Parámetros por defecto/exploración)"
         texto_descripcion = (
-            f"Modelo {nombre_modelo} optimizado mediante GridSearchCV enfocado en maximizar RECALL.\n"
-            f"Entrenado con la estrategia de balanceo: {nombre_mejor_balanceo}.\n"
+            f"Modelo {nombre_modelo}. Tipo: {origen_txt}.\n"
+            f"Estrategia de balanceo de datos de entrenamiento: {nombre_mejor_balanceo}.\n"
+            f"Métricas finales en Test -> RECALL: {recall} | F1: {f1}.\n"
         )
         
         client.update_model_version(
@@ -358,19 +388,21 @@ def optimizar_hiperparametros_mlflow(
         client.set_model_version_tag(name=C.MODEL_NAME, version=ultima_version, key="autor", value="Sinhue")
         client.set_model_version_tag(name=C.MODEL_NAME, version=ultima_version, key="tipo_balanceo", value=str(nombre_mejor_balanceo))
         client.set_model_version_tag(name=C.MODEL_NAME, version=ultima_version, key="recall_test", value=str(recall))
+        client.set_model_version_tag(name=C.MODEL_NAME, version=ultima_version, key="tuning_exitoso", value=str(es_optimizado))
         
-        # ── diccionario de salida para json de metricas ───────────────────
+        # Diccionario de salida estructurado
         metricas_modelo = {
             "algoritmo": nombre_modelo,
-            "mejores_hiperparametros": mejores_params,
+            "tuning_aplicado": es_optimizado,
+            "hiperparametros_finales": hiperparametros_finales,
             "metricas_evaluacion": {
                 "accuracy": accuracy,
                 "f1_score": f1,
                 "recall": recall,
                 "roc_auc": roc_auc,
             },
-        }
-    return modelo_tuning, metricas_modelo
+        }        
+    return modelo_final, metricas_modelo
 
 # ── Funciones para Publicacion ──────────────────────────────────────────── 
 
@@ -408,10 +440,10 @@ def run():
     df_train_smote= balancear_datos_smote(X_train, y_train)
     
     # 2. Selección de mejor algoritmo de ML en MLflow
-    mejor_modelo, nombre_modelo, mejor_dataset, nombre_mejor_balanceo = modelar_mlflow(df_train, df_train_under, df_train_over, df_train_smote, X_test, y_test)
+    mejor_modelo, nombre_modelo, mejor_dataset, nombre_mejor_balanceo, mejor_recall = modelar_mlflow(df_train, df_train_under, df_train_over, df_train_smote, X_test, y_test)
     
     # 3. Ajuste fino del mejor modelo mediante GridSearchCV en MLflow
-    modelo_tunning, metricas_modelo = optimizar_hiperparametros_mlflow(mejor_modelo, nombre_modelo, mejor_dataset, X_test, y_test, nombre_mejor_balanceo)
+    modelo_tunning, metricas_modelo = optimizar_hiperparametros_mlflow(mejor_modelo, nombre_modelo, mejor_dataset, X_test, y_test, nombre_mejor_balanceo, mejor_recall)
     
     log.info('=== ETAPA 3 COMPLETADA ===')
     log.info('=== ETAPA 4: EXPORTACION DEL MEJOR MODELO Y SUS RESULTADOS ===')

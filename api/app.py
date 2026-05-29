@@ -56,11 +56,10 @@ def root():
 
 @app.get("/health", response_model=HealthResponse, tags=["Salud"])
 def health():
-
     if predictor.modelo is None:
         raise HTTPException(status_code=503, detail="Modelo no instanciado")
         
-    is_dummy = isinstance(predictor.modelo, DummyModel) or not predictor.inicializado
+    is_dummy = not predictor.inicializado
     
     return HealthResponse(
         status="awaiting_train" if is_dummy else "ok",
