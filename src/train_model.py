@@ -142,7 +142,7 @@ def modelar_mlflow(df_train: pd.DataFrame,
                    df_train_smote: pd.DataFrame,
                    X_test: pd.DataFrame,
                    y_test: pd.Series,
-                   ) -> Tuple[ClassifierMixin, str, pd.DataFrame, str]:
+                   ) -> Tuple[ClassifierMixin, str, pd.DataFrame, str, float]:
     datasets_entrenamiento = {
         "original": (
             df_train.drop(columns=[C.TARGET]),
