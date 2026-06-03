@@ -40,13 +40,19 @@ check-api:
 	fi
 
 # ── Pipeline CI/CD local ──────────────────────────────────────────────────────
-all: train validate versions docker
+all: train tests validate versions docker
 	@echo "✓ Pipeline CI/CD local completado exitosamente de forma aislada."
 
 train: check-mlflow check-api
 	@echo "=== Generando datos y entrenando modelo ==="
 	docker exec -i $(DOCKER_FASTAPI_NAME) python src/manage_data.py
 	docker exec -i $(DOCKER_FASTAPI_NAME) python src/train_model.py
+
+test:
+	@echo "=== Tests unitarios con pytest ==="
+	docker exec -i $(DOCKER_FASTAPI_NAME) pytest tests/test_data.py -v -s
+	docker exec -i $(DOCKER_FASTAPI_NAME) pytest tests/test_model.py -v -s
+	docker exec -i $(DOCKER_FASTAPI_NAME) pytest tests/test_pipeline.py -v -s
 
 validate: check-api
 	@echo "=== Validando metricas y Quality Gate ==="
@@ -134,6 +140,7 @@ help:
 	@echo "CI/CD local:"
 	@echo "  make all                     — Ejecuta flujo completo (train + validate + docker)"
 	@echo "  make train                   — Orquesta el ciclo de entrenamiento en src/"
+	@echo "  make test                    — Ejecutar pruebas unitarias del directorio tests/"
 	@echo "  make validate      		  — quality gate de métricas"
 	@echo "  make versions      		  — versiones de modelos con MLFlow"
 	@echo "  make docker                  — Construye la imagen de la API (contexto raíz)"
