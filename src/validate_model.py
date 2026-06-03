@@ -26,7 +26,7 @@ def obtener_metricas_json(metrics_path: Path = C.METRICS_PATH) -> tuple[dict,dic
     
     log.info(f'📊 ARCHIVO DE MÉTRICAS DETECTADO - RESUMEN DE RESULTADOS:\n{json.dumps(metricas_dict, indent=4, ensure_ascii=False)}')    
     algoritmo_modelo = {"algoritmo": metricas_dict["algoritmo"]}
-    hiperparametros_modelo = metricas_dict["mejores_hiperparametros"]
+    hiperparametros_modelo = metricas_dict["hiperparametros_finales"]
     resultados_modelo = metricas_dict["metricas_evaluacion"]
     
     log.info(f"🔹 Modelo: {algoritmo_modelo}")
