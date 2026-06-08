@@ -1,13 +1,13 @@
 """tests/test_data.py — Tests para revisar el dataset procesad."""
-import pytest
+
 import pandas as pd
-import config as C
 import sys
 import logging
 
 from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
-
+import config as C
+import pytest
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s | TEST_DATA | %(levelname)s | %(message)s',
                     datefmt='%H:%M:%S')

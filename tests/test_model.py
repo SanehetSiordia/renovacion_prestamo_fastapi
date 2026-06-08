@@ -1,7 +1,11 @@
 """tests/test_model.py — Tests para revisar el modelo entrenado."""
-import config as C
 import sys
 import logging
+
+from pathlib import Path
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+import config as C
+
 import pytest
 import pickle
 import numpy as np
@@ -9,10 +13,6 @@ import pandas as pd
 from typing import Dict
 from typing import Any
 from sklearn.base import ClassifierMixin
-
-from pathlib import Path
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
-
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s | TEST_MODEL | %(levelname)s | %(message)s',
                     datefmt='%H:%M:%S')

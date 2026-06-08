@@ -1,13 +1,13 @@
 """tests/test_model.py — Tests para revisar el modelo entrenado."""
-import config as C
 import sys
 import logging
-import pytest
-import json
 
 from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
+import config as C
+import pytest
+import json
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s | TEST_PIPELINE | %(levelname)s | %(message)s',
                     datefmt='%H:%M:%S')

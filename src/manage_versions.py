@@ -1,25 +1,14 @@
-"""src/manage_versions.py — Gestión de versiones en MLflow Model Registry.
+"""src/manage_versions.py — Gestión de versiones en MLflow Model Registry."""
 
-Flujo de estados: None → Staging → Production → Archived
-
-Uso en Codespace (con MLflow corriendo):
-    # Con el stack levantado:
-    docker compose -f docker-compose.preprod.yml up -d mlflow
-    python src/manage_versions.py
-
-    # O directamente:
-    MLFLOW_TRACKING_URI=http://localhost:5000 python src/manage_versions.py
-"""
-from mlflow import MlflowClient
-import mlflow
-import config as C
 import sys
 import os
 import logging
 
 from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
-
+import config as C
+import mlflow
+from mlflow import MlflowClient
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s | MANAGE_VERSIONS | %(levelname)s | %(message)s',
                     datefmt='%H:%M:%S')

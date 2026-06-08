@@ -3,13 +3,13 @@ validate_model.py — Valida que las métricas superen el umbral mínimo.
 
 Si falla, el pipeline CI/CD se detiene y no se construye la imagen Docker.
 """
-import config as C
 import sys
 import logging
-import json
 
 from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+import config as C
+import json
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s | VALIDATE_MODEL | %(levelname)s | %(message)s',
                     datefmt='%H:%M:%S')

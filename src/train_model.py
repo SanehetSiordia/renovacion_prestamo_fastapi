@@ -3,7 +3,14 @@ train_model.py — entrena el modelo y crea los artefactos correspondientes.
 Entrada : data/processed/processed_renovacion_prestamo.csv
 Salida  : artifacts/metrics.json | artifacts/modelo.pkl | artifacts/modelo.skops
 """
+import sys
+import os
+import logging
+import warnings
 
+from pathlib import Path
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+import config as C
 from imblearn.over_sampling import SMOTE
 from imblearn.over_sampling import RandomOverSampler
 from imblearn.under_sampling import RandomUnderSampler
@@ -26,20 +33,11 @@ from mlflow.models import infer_signature
 import mlflow.sklearn as ml_learn
 import mlflow
 import socket
-import config as C
-import sys
-import os
-import logging
-import warnings
 import json
 import pickle
 import skops.io as sio
 import numpy as np
 import pandas as pd
-
-from pathlib import Path
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
-
 
 os.environ["GIT_PYTHON_REFRESH"] = "quiet"
 warnings.filterwarnings("ignore", category=UserWarning, module="mlflow")

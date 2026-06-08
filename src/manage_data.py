@@ -3,15 +3,16 @@ manage_data.py —  Ingestión, tratamiento de datos y Feature engineering.
 Entrada : data/raw/raw_renovacion_prestamo.csv
 Salida  : data/processed/processed_renovacion_prestamo.csv
 """
-from sklearn.cluster import KMeans
-import numpy as np
-import pandas as pd
-import config as C
+
 import sys
 import logging
 
 from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+import config as C
+import numpy as np
+import pandas as pd
+from sklearn.cluster import KMeans
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s | MANAGE_DATA | %(levelname)s | %(message)s',
                     datefmt='%H:%M:%S')
@@ -19,7 +20,6 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s | MANAGE_DATA | %(le
 log = logging.getLogger(__name__)
 
 # ── Funciones de limpieza ─────────────────────────────────────────────────
-
 
 def renombrar_columnas(df: pd.DataFrame) -> pd.DataFrame:
     df = df.copy()
