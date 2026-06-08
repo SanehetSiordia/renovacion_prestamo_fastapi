@@ -21,6 +21,7 @@ log = logging.getLogger(__name__)
 
 # ── Funciones de limpieza ─────────────────────────────────────────────────
 
+
 def renombrar_columnas(df: pd.DataFrame) -> pd.DataFrame:
     df = df.copy()
     for col, col_nueva in C.COLUMNAS_RENOMBRAR.items():
