@@ -18,6 +18,13 @@ env:
   PYTHON_VERSION: '3.12'
   IMAGE_NAME: renovacion-prestamo-api
   IMAGE_VERSION: '1.0.0'
+  COMPOSE_FILE: compose.yml
+  DOCKER_MLFLOW_NAME: mlflow_server
+  MLFLOW_TRACKING_URI_DOCKER: sqlite:////mlruns/mlflow.db
+  APP_NETWORK_NAME: renovacion_prestamo-net
+  MLFLOW_TRACKING_URI: http://localhost:5000
+  PORT_LOCAL: 8085
+  PORT_REMOTE: 8000
 
 jobs:
 
@@ -61,21 +68,63 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: actions/setup-python@v5
+      #MLFLOW
+      - name: Configurar Variables de Entorno para el Runner y Docker
+        run: |
+          if [ ! -f .env ]; then
+            echo "Creando .env base para Docker Compose..."
+            echo "IMAGE_NAME=renovacion_prestamo-image" > .env
+            echo "IMAGE_VERSION=1.0.0" >> .env
+            echo "DOCKER_FASTAPI_NAME=renovacion_prestamo-api" >> .env
+            echo "DOCKER_MLFLOW_NAME=renovacion_prestamo-mlflow" >> .env
+            echo "APP_NETWORK_NAME=renovacion_prestamo-net" >> .env
+            echo "PORT_LOCAL=8085" >> .env
+            echo "PORT_REMOTE=8000" >> .env
+          fi
+          # IMPORTANTE: Forzamos que MLFLOW_TRACKING_URI_DOCKER use sqlite local para el compose
+          # si es que tu comando de docker usa esa variable.
+          echo "MLFLOW_TRACKING_URI_DOCKER=sqlite:////mlruns/mlflow.db" >> .env
+
+      - name: Inicializar MLflow Server en Docker
+        run: |
+          echo "=== Levantando servidor MLflow ==="
+          # Levantamos de forma aislada ignorando el depends_on de FastAPI
+          docker compose -f ${{ env.COMPOSE_FILE }} up -d mlflow
+
+      - name: Configurar Python ${{ env.PYTHON_VERSION }}
+        uses: actions/setup-python@v5
         with:
           python-version: ${{ env.PYTHON_VERSION }}
           cache: 'pip'
 
       - name: Instalar dependencias
         run: pip install --no-cache-dir -r requirements.txt
+        
+      - name: Esperar a que MLflow esté listo (Healthcheck)
+        run: |
+          echo "Esperando a que MLflow responda en http://localhost:5000..."
+          for i in {1..20}; do
+            if curl -s http://localhost:5000/ > /dev/null; then
+              echo "✓ MLflow está activo y saludable en el puerto 5000."
+              break
+            fi
+            echo "Aún no responde, esperando 3 segundos... ($i/20)"
+            sleep 3
+          done
 
       - name: Generar dataset
         run: python src/manage_data.py
 
       - name: Entrenar pipeline
+        env:
+          MLFLOW_TRACKING_URI: http://localhost:5000
+          MLFLOW_EXPERIMENT: renovacion_prestamo-sinhue
         run: python src/train_model.py
 
       - name: Validar métricas (quality gate)
+        env:
+          MLFLOW_TRACKING_URI: http://localhost:5000
+          MLFLOW_EXPERIMENT: renovacion_prestamo-sinhue
         run: python src/validate_model.py
 
       - name: Guardar artefactos del modelo
@@ -84,6 +133,10 @@ jobs:
           name: model-artifacts
           path: artifacts/
           retention-days: 7
+          
+      - name: Apagar infraestructura de MLflow
+        if: always()
+        run: docker compose -f ${{ env.COMPOSE_FILE }} down
 
   # ── JOB 3: Build Docker ────────────────────────────────────────────────────
   build-docker:
