@@ -16,13 +16,14 @@ on:
 
 env:
   PYTHON_VERSION: '3.12'
-  IMAGE_NAME: renovacion-prestamo-api
+  IMAGE_NAME: renovacion_prestamo-image
   IMAGE_VERSION: '1.0.0'
+  DOCKER_FASTAPI_NAME: 'renovacion_prestamo-api'
   COMPOSE_FILE: compose.yml
-  DOCKER_MLFLOW_NAME: mlflow_server
-  MLFLOW_TRACKING_URI_DOCKER: sqlite:////mlruns/mlflow.db
+  DOCKER_MLFLOW_NAME: renovacion_prestamo-mlflow
+  MLFLOW_TRACKING_URI_DOCKER: http://0.0.0.0:5000
   APP_NETWORK_NAME: renovacion_prestamo-net
-  MLFLOW_TRACKING_URI: http://localhost:5000
+  MLFLOW_TRACKING_URI: http://127.0.0.1:5000
   PORT_LOCAL: 8085
   PORT_REMOTE: 8000
 
@@ -73,22 +74,19 @@ jobs:
         run: |
           if [ ! -f .env ]; then
             echo "Creando .env base para Docker Compose..."
-            echo "IMAGE_NAME=renovacion_prestamo-image" > .env
-            echo "IMAGE_VERSION=1.0.0" >> .env
-            echo "DOCKER_FASTAPI_NAME=renovacion_prestamo-api" >> .env
-            echo "DOCKER_MLFLOW_NAME=renovacion_prestamo-mlflow" >> .env
-            echo "APP_NETWORK_NAME=renovacion_prestamo-net" >> .env
-            echo "PORT_LOCAL=8085" >> .env
-            echo "PORT_REMOTE=8000" >> .env
+            echo "IMAGE_NAME=${{ env.IMAGE_NAME }}" > .env
+            echo "IMAGE_VERSION=${{ env.IMAGE_VERSION }}" >> .env
+            echo "DOCKER_FASTAPI_NAME=${{ env.DOCKER_FASTAPI_NAME }}" >> .env
+            echo "DOCKER_MLFLOW_NAME=${{ env.DOCKER_MLFLOW_NAME }}" >> .env
+            echo "APP_NETWORK_NAME=${{ env.APP_NETWORK_NAME }}" >> .env
+            echo "PORT_LOCAL=${{ env.PORT_LOCAL }}" >> .env
+            echo "PORT_REMOTE=${{ env.PORT_REMOTE }}" >> .env
           fi
-          # IMPORTANTE: Forzamos que MLFLOW_TRACKING_URI_DOCKER use sqlite local para el compose
-          # si es que tu comando de docker usa esa variable.
-          echo "MLFLOW_TRACKING_URI_DOCKER=sqlite:////mlruns/mlflow.db" >> .env
+          echo "MLFLOW_TRACKING_URI_DOCKER=${{ env.MLFLOW_TRACKING_URI_DOCKER }}" >> .env
 
       - name: Inicializar MLflow Server en Docker
         run: |
           echo "=== Levantando servidor MLflow ==="
-          # Levantamos de forma aislada ignorando el depends_on de FastAPI
           docker compose -f ${{ env.COMPOSE_FILE }} up -d mlflow
 
       - name: Configurar Python ${{ env.PYTHON_VERSION }}
@@ -102,28 +100,33 @@ jobs:
         
       - name: Esperar a que MLflow esté listo (Healthcheck)
         run: |
-          echo "Esperando a que MLflow responda en http://localhost:5000..."
+          echo "Esperando a que MLflow responda en ${{ env.MLFLOW_TRACKING_URI }}..."
           for i in {1..20}; do
-            if curl -s http://localhost:5000/ > /dev/null; then
+            # Intentamos conectar tanto a la raíz como al endpoint de health
+            if curl -s ${{ env.MLFLOW_TRACKING_URI }}/health > /dev/null || curl -s ${{ env.MLFLOW_TRACKING_URI }}/ > /dev/null; then
               echo "✓ MLflow está activo y saludable en el puerto 5000."
-              break
+              exit 0
             fi
-            echo "Aún no responde, esperando 3 segundos... ($i/20)"
+            echo "Aún no responde (instalando mlflow en contenedor), esperando 3 segundos... ($i/20)"
             sleep 3
           done
+          
+          echo "MLflow no respondió a tiempo. Mostrando logs del contenedor para diagnosticar:"
+          docker logs ${{ env.DOCKER_MLFLOW_NAME }}
+          exit 1
 
       - name: Generar dataset
         run: python src/manage_data.py
 
       - name: Entrenar pipeline
         env:
-          MLFLOW_TRACKING_URI: http://localhost:5000
+          MLFLOW_TRACKING_URI: ${{ env.MLFLOW_TRACKING_URI }}
           MLFLOW_EXPERIMENT: renovacion_prestamo-sinhue
         run: python src/train_model.py
 
       - name: Validar métricas (quality gate)
         env:
-          MLFLOW_TRACKING_URI: http://localhost:5000
+          MLFLOW_TRACKING_URI: ${{ env.MLFLOW_TRACKING_URI }}
           MLFLOW_EXPERIMENT: renovacion_prestamo-sinhue
         run: python src/validate_model.py
 
@@ -156,8 +159,8 @@ jobs:
         run: |
           docker build \
             --build-arg APP_VERSION=${{ env.IMAGE_VERSION }} \
-            --build-arg PORT_LOCAL=8085 \
-            --build-arg PORT_REMOTE=8000 \
+            --build-arg PORT_LOCAL=${{ env.PORT_LOCAL }} \
+            --build-arg PORT_REMOTE=${{ env.PORT_REMOTE }} \
             -t ${{ env.IMAGE_NAME }}:${{ github.sha }} .
           
           docker tag ${{ env.IMAGE_NAME }}:${{ github.sha }} ${{ env.IMAGE_NAME }}:${{ env.IMAGE_VERSION }}
@@ -177,6 +180,6 @@ jobs:
               m = pickle.load(open(path, 'rb'))
               print('✓ Modelo cargado correctamente en Docker:', type(m).__name__)
           else:
-              print('❌ Error: El archivo del modelo no se encuentra dentro del contenedor.')
+              print(' Error: El archivo del modelo no se encuentra dentro del contenedor.')
               exit(1)
           "
