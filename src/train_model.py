@@ -4,6 +4,29 @@ Entrada : data/processed/processed_renovacion_prestamo.csv
 Salida  : artifacts/metrics.json | artifacts/modelo.pkl | artifacts/modelo.skops
 """
 
+from imblearn.over_sampling import SMOTE
+from imblearn.over_sampling import RandomOverSampler
+from imblearn.under_sampling import RandomUnderSampler
+from xgboost import XGBClassifier
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.tree import DecisionTreeClassifier
+from sklearn.base import BaseEstimator
+from sklearn.base import ClassifierMixin
+from sklearn.base import clone
+from sklearn.metrics import roc_auc_score
+from sklearn.metrics import accuracy_score
+from sklearn.metrics import recall_score
+from sklearn.metrics import f1_score
+from sklearn.model_selection import GridSearchCV
+from sklearn.model_selection import train_test_split
+from typing import Any
+from typing import cast
+from typing import Tuple
+from mlflow.models import infer_signature
+import mlflow.sklearn as ml_learn
+import mlflow
+import socket
+import config as C
 import sys
 import os
 import logging
@@ -17,35 +40,6 @@ import pandas as pd
 from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-import config as C
-import socket
-import mlflow
-import mlflow.sklearn as ml_learn
-from mlflow.models import infer_signature
-
-from typing import Tuple
-from typing import cast
-from typing import Any
-
-from sklearn.model_selection import train_test_split
-from sklearn.model_selection import GridSearchCV
-
-from sklearn.metrics import f1_score
-from sklearn.metrics import recall_score
-from sklearn.metrics import accuracy_score
-from sklearn.metrics import roc_auc_score
-
-from sklearn.base import clone
-from sklearn.base import ClassifierMixin
-from sklearn.base import BaseEstimator
-
-from sklearn.tree import DecisionTreeClassifier
-from sklearn.ensemble import RandomForestClassifier
-from xgboost import XGBClassifier
-
-from imblearn.under_sampling import RandomUnderSampler
-from imblearn.over_sampling import RandomOverSampler
-from imblearn.over_sampling import SMOTE
 
 os.environ["GIT_PYTHON_REFRESH"] = "quiet"
 warnings.filterwarnings("ignore", category=UserWarning, module="mlflow")
@@ -60,8 +54,8 @@ log = logging.getLogger(__name__)
 # ── Declaracion de Constantes para MODELAR ───────────────────────────────────────
 MODELOS = {
     'DecisionTree': DecisionTreeClassifier(random_state=C.RANDOM_STATE),
-    'RandomForest': RandomForestClassifier(random_state=C.RANDOM_STATE,n_estimators = 10, max_depth = 4),
-    'XGBoost': XGBClassifier(random_state=C.RANDOM_STATE,n_estimators = 10, max_depth = 4, learning_rate=0.1,subsample = 0.5)}
+    'RandomForest': RandomForestClassifier(random_state=C.RANDOM_STATE, n_estimators=10, max_depth=4),
+    'XGBoost': XGBClassifier(random_state=C.RANDOM_STATE, n_estimators=10, max_depth=4, learning_rate=0.1, subsample=0.5)}
 
 HIPERPARAMETROS = {
     "DecisionTree": {
@@ -88,14 +82,15 @@ HIPERPARAMETROS = {
 
 # ── Funciones de balanceo de datos ───────────────────────────────────────
 
-def separar_datos_entrenamiento(df: pd.DataFrame) -> Tuple[pd.DataFrame,pd.DataFrame, pd.DataFrame, pd.Series, pd.Series]:
+
+def separar_datos_entrenamiento(df: pd.DataFrame) -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.Series, pd.Series]:
     df = df.copy()
     X = df.drop(columns=[C.TARGET])
     y = df[C.TARGET]
     X_train, X_test, y_train, y_test = train_test_split(
-    X, y, test_size=C.TEST_SIZE, random_state=C.RANDOM_STATE, stratify=y)    
+        X, y, test_size=C.TEST_SIZE, random_state=C.RANDOM_STATE, stratify=y)
     df_train = pd.concat([X_train, y_train], axis=1)
-    
+
     log.info(f'Datos divididos con éxito (test_size={C.TEST_SIZE})')
     log.info(f'X_train: {X_train.shape} | X_test: {X_test.shape}')
     log.info(f'y_train: {y_train.shape} | y_test: {y_test.shape}')
@@ -104,33 +99,36 @@ def separar_datos_entrenamiento(df: pd.DataFrame) -> Tuple[pd.DataFrame,pd.DataF
     log.info(f'Distribucion Target en df_train: {df_train[C.TARGET].value_counts()}')
     return df_train, X_train, X_test, y_train, y_test
 
-def balancear_datos_undersampling(X_train: pd.DataFrame, y_train: pd.Series)-> pd.DataFrame:
-    sampler =  RandomUnderSampler(sampling_strategy='auto',random_state=C.RANDOM_STATE)
-    X_train_under, y_train_under = cast(Tuple[Any, Any], sampler.fit_resample(X_train, y_train))    
+
+def balancear_datos_undersampling(X_train: pd.DataFrame, y_train: pd.Series) -> pd.DataFrame:
+    sampler = RandomUnderSampler(sampling_strategy='auto', random_state=C.RANDOM_STATE)
+    X_train_under, y_train_under = cast(Tuple[Any, Any], sampler.fit_resample(X_train, y_train))
     df_train_under = pd.concat([X_train_under, y_train_under], axis=1)
-    log.info(f'Datos Balanceados con éxito (UNDERSAMPLING)')
+    log.info('Datos Balanceados con éxito (UNDERSAMPLING)')
     log.info(f'X_train_under: {X_train_under.shape}')
-    log.info(f'y_train_under: {y_train_under.shape}')  
+    log.info(f'y_train_under: {y_train_under.shape}')
     log.info(f'Distribucion Target en df_train_under: {df_train_under[C.TARGET].value_counts()}')
-    return  df_train_under
+    return df_train_under
 
-def balancear_datos_oversampling(X_train: pd.DataFrame, y_train: pd.Series)-> pd.DataFrame:
-    sampler =  RandomOverSampler(sampling_strategy='auto',random_state=C.RANDOM_STATE)
-    X_train_over, y_train_over = cast(Tuple[Any, Any], sampler.fit_resample(X_train, y_train))    
+
+def balancear_datos_oversampling(X_train: pd.DataFrame, y_train: pd.Series) -> pd.DataFrame:
+    sampler = RandomOverSampler(sampling_strategy='auto', random_state=C.RANDOM_STATE)
+    X_train_over, y_train_over = cast(Tuple[Any, Any], sampler.fit_resample(X_train, y_train))
     df_train_over = pd.concat([X_train_over, y_train_over], axis=1)
-    log.info(f'Datos Balanceados con éxito (OVERSAMPLING)')
+    log.info('Datos Balanceados con éxito (OVERSAMPLING)')
     log.info(f'X_train_over: {X_train_over.shape}')
-    log.info(f'y_train_over: {y_train_over.shape}')  
+    log.info(f'y_train_over: {y_train_over.shape}')
     log.info(f'Distribucion Target en df_train_over: {df_train_over[C.TARGET].value_counts()}')
-    return  df_train_over
+    return df_train_over
 
-def balancear_datos_smote(X_train: pd.DataFrame, y_train: pd.Series)-> pd.DataFrame:
-    sampler =  SMOTE(sampling_strategy='auto',random_state=C.RANDOM_STATE)
-    X_train_smote, y_train_smote = cast(Tuple[Any, Any], sampler.fit_resample(X_train, y_train))    
+
+def balancear_datos_smote(X_train: pd.DataFrame, y_train: pd.Series) -> pd.DataFrame:
+    sampler = SMOTE(sampling_strategy='auto', random_state=C.RANDOM_STATE)
+    X_train_smote, y_train_smote = cast(Tuple[Any, Any], sampler.fit_resample(X_train, y_train))
     df_train_smote = pd.concat([X_train_smote, y_train_smote], axis=1)
-    log.info(f'Datos Balanceados con éxito (SMOTE)')
+    log.info('Datos Balanceados con éxito (SMOTE)')
     log.info(f'X_train_smote: {X_train_smote.shape}')
-    log.info(f'y_train_smote: {y_train_smote.shape}')  
+    log.info(f'y_train_smote: {y_train_smote.shape}')
     log.info(f'Distribucion Target en df_train_smote: {df_train_smote[C.TARGET].value_counts()}')
     return df_train_smote
 
@@ -171,12 +169,12 @@ def modelar_mlflow(df_train: pd.DataFrame,
         except socket.gaierror:
             uri_tracking = uri_tracking.replace("http://mlflow:", "http://localhost:")
             log.info(f"⚠️ Entorno Host/Codespace detectado. Conmutando URI global a: {uri_tracking}")
-            
+
     os.environ["MLFLOW_TRACKING_URI"] = uri_tracking
-    mlflow.set_tracking_uri(uri_tracking)   
+    mlflow.set_tracking_uri(uri_tracking)
     mlflow.set_experiment(C.MLFLOW_EXPERIMENT)
 
-    with mlflow.start_run(run_name=C.MLFLOW_RUN_NAME) as run:
+    with mlflow.start_run(run_name=C.MLFLOW_RUN_NAME):
         mlflow.log_params(
             {
                 "k_features": C.K_FEATURES,
@@ -242,8 +240,9 @@ def modelar_mlflow(df_train: pd.DataFrame,
                 "xgboost.core.Booster",
             ]
         )
-        
+
     return cast(ClassifierMixin, mejor_modelo_global), mejor_nombre_modelo, df_train_best, mejor_tipo_dataset, mejor_recall
+
 
 def optimizar_hiperparametros_mlflow(
     mejor_modelo_base: ClassifierMixin,
@@ -257,12 +256,12 @@ def optimizar_hiperparametros_mlflow(
 
     log.info(
         f"=== INICIANDO AJUSTE FINO (TUNING) PARA: {nombre_modelo} ==="
-    )    
-    
-    metricas_modelo=dict()
-        
-    X_train_opt=mejor_dataset.drop(columns=[C.TARGET])
-    y_train_opt=mejor_dataset[C.TARGET]
+    )
+
+    metricas_modelo = dict()
+
+    X_train_opt = mejor_dataset.drop(columns=[C.TARGET])
+    y_train_opt = mejor_dataset[C.TARGET]
 
     param_grid = HIPERPARAMETROS.get(nombre_modelo, {})
 
@@ -281,13 +280,13 @@ def optimizar_hiperparametros_mlflow(
         except socket.gaierror:
             uri_tracking = uri_tracking.replace("http://mlflow:", "http://localhost:")
             log.info(f"⚠️ Entorno Host/Codespace detectado. Conmutando URI global a: {uri_tracking}")
-            
+
     os.environ["MLFLOW_TRACKING_URI"] = uri_tracking
-    mlflow.set_tracking_uri(uri_tracking)   
+    mlflow.set_tracking_uri(uri_tracking)
     mlflow.set_experiment(C.MLFLOW_EXPERIMENT)
     run_name_tuning = f"Tuning_{nombre_modelo}_{C.MLFLOW_RUN_NAME}"
 
-    with mlflow.start_run(run_name=run_name_tuning) as run:
+    with mlflow.start_run(run_name=run_name_tuning):
         grid_search = GridSearchCV(
             estimator=cast(BaseEstimator, mejor_modelo_base),
             param_grid=param_grid,
@@ -306,7 +305,7 @@ def optimizar_hiperparametros_mlflow(
         mejores_params = grid_search.best_params_
 
         log.info(f"Tuning Completado - Mejores parámetros: {mejores_params}")
-        
+
         y_pred = modelo_tuning.predict(X_test)
 
         accuracy = round(float(accuracy_score(y_test, y_pred)), 4)
@@ -318,7 +317,7 @@ def optimizar_hiperparametros_mlflow(
             f"Resultado Optimizado -> F1={f1} | RECALL OPTIMIZADO={recall} | Accuracy={accuracy} | Roc AUC={roc_auc}"
         )
 
-        #Comparativa de modelo base vs modelo tunning
+        # Comparativa de modelo base vs modelo tunning
         if recall > recall_base:
             log.info(f"El Tuning mejoró el Recall base ({recall} > {recall_base}). Seleccionando modelo optimizado.")
             modelo_final = modelo_tuning
@@ -331,7 +330,7 @@ def optimizar_hiperparametros_mlflow(
             )
             modelo_final = mejor_modelo_base
             hiperparametros_finales = mejor_modelo_base.get_params() if hasattr(mejor_modelo_base, 'get_params') else {}
-            
+
             y_pred_base = mejor_modelo_base.predict(X_test)
             accuracy = round(float(accuracy_score(y_test, y_pred_base)), 4)
             f1 = round(float(f1_score(y_test, y_pred_base, zero_division=0)), 4)
@@ -343,12 +342,12 @@ def optimizar_hiperparametros_mlflow(
         mlflow.log_param("algoritmo_optimizado", nombre_modelo)
         mlflow.log_param("tuning_aplicado", str(es_optimizado))
         mlflow.log_metrics({"accuracy": accuracy, "f1": f1, "recall": recall, "roc_auc": roc_auc})
-        
+
         # ── registro de firmas y metadatos en MLFLOW ───────────────────
         y_pred_final = modelo_final.predict(X_test)
         y_pred_df = pd.DataFrame(y_pred_final, columns=[C.TARGET], index=X_test.index)
         firma_modelo = infer_signature(X_test, y_pred_df)
-        
+
         nombre_artefacto = "modelo_optimizado" if es_optimizado else "modelo_base_ganador"
         model_info = ml_learn.log_model(
             modelo_final,
@@ -361,35 +360,35 @@ def optimizar_hiperparametros_mlflow(
             signature=firma_modelo,
         )
 
-        log.info(f"Registrando versión del modelo en el Registry de forma explícita...")
+        log.info("Registrando versión del modelo en el Registry de forma explícita...")
         model_version = mlflow.register_model(
             model_uri=model_info.model_uri,
             name=C.MODEL_NAME
         )
-        
+
         ultima_version = model_version.version
         log.info(f"Creada de forma exitosa la versión '{ultima_version}' para {C.MODEL_NAME}")
 
         client = mlflow.MlflowClient()
-        
+
         origen_txt = "Optimizado mediante GridSearchCV" if es_optimizado else "Base (Parámetros por defecto/exploración)"
         texto_descripcion = (
             f"Modelo {nombre_modelo}. Tipo: {origen_txt}.\n"
             f"Estrategia de balanceo de datos de entrenamiento: {nombre_mejor_balanceo}.\n"
             f"Métricas finales en Test -> RECALL: {recall} | F1: {f1}.\n"
         )
-        
+
         client.update_model_version(
             name=C.MODEL_NAME,
             version=ultima_version,
             description=texto_descripcion
         )
-        
+
         client.set_model_version_tag(name=C.MODEL_NAME, version=ultima_version, key="autor", value="Sinhue")
         client.set_model_version_tag(name=C.MODEL_NAME, version=ultima_version, key="tipo_balanceo", value=str(nombre_mejor_balanceo))
         client.set_model_version_tag(name=C.MODEL_NAME, version=ultima_version, key="recall_test", value=str(recall))
         client.set_model_version_tag(name=C.MODEL_NAME, version=ultima_version, key="tuning_exitoso", value=str(es_optimizado))
-        
+
         # Diccionario de salida estructurado
         metricas_modelo = {
             "algoritmo": nombre_modelo,
@@ -401,13 +400,14 @@ def optimizar_hiperparametros_mlflow(
                 "recall": recall,
                 "roc_auc": roc_auc,
             },
-        }        
+        }
     return modelo_final, metricas_modelo
 
-# ── Funciones para Publicacion ──────────────────────────────────────────── 
+# ── Funciones para Publicacion ────────────────────────────────────────────
+
 
 def exportar_modelo_resultados(modelo: ClassifierMixin, datos_json: dict) -> None:
-    
+
     log.info(f"=== EXPORTANDO ARTEFACTOS LOCALES A {C.ARTIFACTS_DIR} ===")
 
     C.ARTIFACTS_DIR.mkdir(parents=True, exist_ok=True)
@@ -424,34 +424,35 @@ def exportar_modelo_resultados(modelo: ClassifierMixin, datos_json: dict) -> Non
     log.info(f"Modelo guardado en formato Skops en: {C.MODEL_SKOPS_PATH}")
 
 
-# ── Función principal ───────────────────────────────────────────────────── 
+# ── Función principal ─────────────────────────────────────────────────────
 
-def run(): 
-    log.info('=== ETAPA 3: ENTRENAMIENTO Y SELECCION DEL MEJOR MODELO ===')    
-    if not C.PROCESSED_DATA_PATH.exists():        
-        raise FileNotFoundError(f'Dataset no encontrado: {C.PROCESSED_DATA_PATH}')    
+def run():
+    log.info('=== ETAPA 3: ENTRENAMIENTO Y SELECCION DEL MEJOR MODELO ===')
+    if not C.PROCESSED_DATA_PATH.exists():
+        raise FileNotFoundError(f'Dataset no encontrado: {C.PROCESSED_DATA_PATH}')
     df = pd.read_csv(C.PROCESSED_DATA_PATH, sep=',')
     log.info(f'Cargado Dataframe: {df.shape[0]} filas x {df.shape[1]} columnas')
-    
+
     # 1. Separación de datos y balanceos correspondientes
     df_train, X_train, X_test, y_train, y_test = separar_datos_entrenamiento(df)
-    df_train_under= balancear_datos_undersampling(X_train, y_train)
-    df_train_over= balancear_datos_oversampling(X_train, y_train)
-    df_train_smote= balancear_datos_smote(X_train, y_train)
-    
+    df_train_under = balancear_datos_undersampling(X_train, y_train)
+    df_train_over = balancear_datos_oversampling(X_train, y_train)
+    df_train_smote = balancear_datos_smote(X_train, y_train)
+
     # 2. Selección de mejor algoritmo de ML en MLflow
     mejor_modelo, nombre_modelo, mejor_dataset, nombre_mejor_balanceo, mejor_recall = modelar_mlflow(df_train, df_train_under, df_train_over, df_train_smote, X_test, y_test)
-    
+
     # 3. Ajuste fino del mejor modelo mediante GridSearchCV en MLflow
     modelo_tunning, metricas_modelo = optimizar_hiperparametros_mlflow(mejor_modelo, nombre_modelo, mejor_dataset, X_test, y_test, nombre_mejor_balanceo, mejor_recall)
-    
+
     log.info('=== ETAPA 3 COMPLETADA ===')
     log.info('=== ETAPA 4: EXPORTACION DEL MEJOR MODELO Y SUS RESULTADOS ===')
-    
+
     # 4. Exportación física de artefactos (.json, .pkl, .skops)
     exportar_modelo_resultados(modelo_tunning, metricas_modelo)
     log.info('=== ETAPA 4 COMPLETADA ===')
     return None
 
-if __name__ == '__main__':    
+
+if __name__ == '__main__':
     run()

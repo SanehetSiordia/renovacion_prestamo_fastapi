@@ -10,16 +10,16 @@ Uso en Codespace (con MLflow corriendo):
     # O directamente:
     MLFLOW_TRACKING_URI=http://localhost:5000 python src/manage_versions.py
 """
+from mlflow import MlflowClient
+import mlflow
+import config as C
 import sys
 import os
 import logging
 
 from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
-import config as C
 
-import mlflow
-from mlflow import MlflowClient
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s | MANAGE_VERSIONS | %(levelname)s | %(message)s',
                     datefmt='%H:%M:%S')
