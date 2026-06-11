@@ -49,11 +49,11 @@ MANIFEST
 
 # local data and models
 
-data/processed/*
-models/
-models/*
+#data/processed/*
+#models/
+#models/*
 *.h5
-*.pkl
+#*.pkl
 *.skops
 *.pth
 *.onnx
