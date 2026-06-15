@@ -1,0 +1,85 @@
+#Docker Ignore Productivo
+
+#Path Api
+tests/
+requirements.txt
+entrypoint.sh
+deploy.sh
+setup.cfg
+
+# Git and IDE
+.git
+.gitignore
+.github/
+
+# IDEs and OS files
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Environments
+.env
+.env.*
+.envrc
+.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+__pycache__/
+*.pyc
+.ipynb_checkpoints/
+.python-version
+*.ipynb
+
+# Large ML Assets
+notebooks/
+results/
+models/
+models/*.pth
+models/*.h5
+models/*.onnx
+models/*.pkl
+checkpoints/
+artifacts/*.skops
+
+# Logs & Monitoring
+logs/
+*.log
+mlruns.db
+mlflow.db
+mlruns/
+mlruns/*  
+tensorboard/    
+lightning_logs/ 
+wandb/          
+
+# Build & OS Artifacts
+dist/
+build/
+.DS_Store
+.dockerignore
+Dockerfile
+docker-compose*
+compose*
+README.md
+.devcontainer/
+docker/
+Makefile
+prod.Dockerfile
+prod.Dockerfile.dockerignore
+
+#DVC Cache and Data
+.dvc/
+dvc*
+**/*.csv
+data/
+data/*
+
+#NOT IGNORE
+!src/
+!api/
+!main.py
+!requirements-prod.txt

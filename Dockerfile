@@ -1,4 +1,4 @@
-FROM python:3.12-slim as dev
+FROM python:3.12-slim AS dev
 
 ARG APP_VERSION
 ARG PORT_LOCAL
@@ -17,6 +17,7 @@ ENV PYTHONUNBUFFERED=1
 ENV APP_VERSION=${APP_VERSION}
 ENV PORT_REMOTE=${PORT_REMOTE}
 ENV PORT_LOCAL=${PORT_LOCAL}
+ENV ENV=${STAGE}
 
 WORKDIR /app
 
@@ -34,7 +35,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 COPY . .
 
 #EXPOSICION DEL PUERTO DE LA IMAGEN
-EXPOSE 8000
+EXPOSE ${PORT_REMOTE}
 
 # ── Health check para que Docker sepa si el contenedor está sano ──────────────
 HEALTHCHECK --interval=30s --timeout=10s --retries=3 \

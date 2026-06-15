@@ -29,12 +29,13 @@ class Predictor:
     def cargar(self) -> None:
         # Cargar Modelo SI ESQUE EXISTE
         if MODEL_PATH.exists() and METRICS_PATH.exists():
-            try:
+            try:                
+                log.info(f"Buscando modelo real para cargar en: {MODEL_PATH}")
                 with open(MODEL_PATH, "rb") as f:
                     self.modelo = pickle.load(f)
+                log.info(f"Buscando metricas del modelo en: {METRICS_PATH}")
                 with open(METRICS_PATH) as f:
-                    self.metricas = json.load(f)
-                
+                    self.metricas = json.load(f)                
                 self.inicializado = True
                 log.info(f"✓ Modelo real cargado exitosamente: {type(self.modelo).__name__}")
                 return
