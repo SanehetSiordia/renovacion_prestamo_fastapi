@@ -28,8 +28,10 @@ services:
       - .env
     build:
       context: .
+      target: ${STAGE}
       dockerfile: Dockerfile
       args:
+        - APP_VERSION=${APP_VERSION}
         - PORT_LOCAL=${PORT_LOCAL}
         - PORT_REMOTE=${PORT_REMOTE}
     image: ${IMAGE_NAME}:${IMAGE_VERSION}
