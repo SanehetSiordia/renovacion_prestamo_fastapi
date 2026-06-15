@@ -5,16 +5,19 @@ export
 
 .PHONY: all train validate docker \
 		dev-up dev-down dev-logs dev-logs-api dev-logs-mlflow dev-ps \
-        deploy rollback clean help check-mlflow mlflow
+        deploy rollback clean help check-mlflow mlflow \
+		prod-up prod-down
 
 COMPOSE_FILE = compose.yml
+COMPOSE_FILE_PROD = compose.prod.yml
+ENV_PROD = .env.prod
 
 VERSION ?= $(IMAGE_VERSION)
 ifeq ($(VERSION),)
   VERSION := latest
 endif
 
-IMAGE_NAME_LOCAL ?= renovacion_prestamo-image
+IMAGE_NAME_LOCAL ?= $(IMAGE_NAME)
 
 # ── Validación Dinamica de MLflow ─────────────────────────────────────────────
 # Verifica si el contenedor ya esta saludable. Si no, invoca el target mlflow.
@@ -108,7 +111,19 @@ mlflow:
 	done
 	@echo "MLflow arriba y saludable."
 
+# ── Ambiente Productivo - SOLO FAST API CON MODELO (Docker Compose) ──────────────────────────────────────
+prod-up:
+	@echo "=== Levantando entorno productivo ==="
+	docker builder prune -a -f
+	@eval $$(grep -v '^#' $(ENV_PROD) | xargs) && \
+	docker compose --env-file $(ENV_PROD) -f $(COMPOSE_FILE_PROD) build --no-cache --pull && \
+	docker compose --env-file $(ENV_PROD) -f $(COMPOSE_FILE_PROD) up -d
 
+prod-down:
+	docker builder prune -a -f
+	docker compose -f $(COMPOSE_FILE_PROD) down -v
+	@echo "=== Entorno detenido y volúmenes purgados ==="
+	
 # ── Flujo de Despliegue y Orquestación (deploy.sh) ───────────────────────────
 ## Flujo completo de despliegue manual encapsulado en bash
 deploy:

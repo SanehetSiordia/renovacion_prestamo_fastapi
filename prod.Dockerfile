@@ -1,5 +1,5 @@
 # ETAPA 1: Builder (Compilación aislada y limpia)
-FROM python:3.12-slim as builder
+FROM python:3.12-slim AS builder
 
 WORKDIR /app
 
@@ -15,7 +15,7 @@ RUN --mount=type=cache,target=/root/.cache/pip \
     pip wheel --no-cache-dir --no-deps --wheel-dir /app/wheels -r requirements-prod.txt
 
 # ETAPA 2: Production
-FROM python:3.12-slim as prod
+FROM python:3.12-slim AS prod
 
 ARG APP_VERSION
 ARG PORT_REMOTE
