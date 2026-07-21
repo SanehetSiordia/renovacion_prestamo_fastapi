@@ -42,8 +42,6 @@ http://localhost:5000/          --MLFLOW GUI
 
 ## Plan a Futuro
 
-- Agregar pruebas unitarias y de smoke
-- Agregar Github Actions
 - Agregar Despliegue a entorno de nube
 - Agregar Ingesta Continua con Auto Loader con PySpark y Databricks
 
