@@ -73,6 +73,22 @@ docker:
 		--build-arg PORT_REMOTE=$(PORT_REMOTE) \
 		-t $(IMAGE_NAME_LOCAL):$(VERSION) .
 
+mlflow:
+	@echo "=== Iniciando Servidor MLflow de forma independiente ==="
+	docker compose -f $(COMPOSE_FILE) up -d mlflow
+	@echo "=== Esperando que MLflow pase el Healthcheck... ==="
+	@until [ "$$(docker inspect --format='{{.State.Health.Status}}' $(DOCKER_MLFLOW_NAME))" = "healthy" ]; do \
+		echo "MLflow esta iniciando... esperando 3 segundos mas."; \
+		sleep 3; \
+	done
+	@echo "MLflow arriba y saludable."
+
+down:
+	@echo "=== Deteniendo todos los contenedores ==="
+	docker builder prune -a -f
+	docker compose -f $(COMPOSE_FILE) down -v
+	@echo "=== Todos los contenedores detenidos ==="
+
 # ── Ambiente Desarrollo (Docker Compose) ──────────────────────────────────────
 
 dev-up:
@@ -101,15 +117,6 @@ dev-logs-mlflow:
 
 dev-ps:
 	docker compose -f $(COMPOSE_FILE) ps
-mlflow:
-	@echo "=== Iniciando Servidor MLflow de forma independiente ==="
-	docker compose -f $(COMPOSE_FILE) up -d mlflow
-	@echo "=== Esperando que MLflow pase el Healthcheck... ==="
-	@until [ "$$(docker inspect --format='{{.State.Health.Status}}' $(DOCKER_MLFLOW_NAME))" = "healthy" ]; do \
-		echo "MLflow esta iniciando... esperando 3 segundos mas."; \
-		sleep 3; \
-	done
-	@echo "MLflow arriba y saludable."
 
 # ── Ambiente Productivo - SOLO FAST API CON MODELO (Docker Compose) ──────────────────────────────────────
 prod-up:
@@ -139,18 +146,23 @@ rollback:
 	@echo "=== Rollback completado ==="
 
 # ── Limpieza Segura del Espacio de Trabajo ────────────────────────────────────
-clean:
+clean-files:
 	@echo "=== Limpiando archivos temporales y cachés ==="
 	rm -rf artifacts/* data/processed/* mlruns/* __pycache__ .coverage htmlcov/
 	find . -name "*.pyc" -delete
 	find . -name "__pycache__" -type d -exec rm -rf {} +
 	@echo "Limpieza completada."
 
+clean-images:
+	@echo "=== Limpiando imagenes de Docker no utilizadas ==="
+	docker image prune -a -f
+	@echo "Limpieza de imagenes completada."
+
 # ── Ayuda en Consola ──────────────────────────────────────────────────────────
 help:
 	@echo ""
 	@echo "===================================================================="
-	@echo " Opciones de automatización del Makefile — Estructura MLOps "
+	@echo " Opciones de automatizacion del Makefile — Estructura MLOps "
 	@echo "===================================================================="
 	@echo "CI/CD local:"
 	@echo "  make all                     — Ejecuta flujo completo (train + validate + docker)"
@@ -159,6 +171,8 @@ help:
 	@echo "  make validate      		  — quality gate de métricas"
 	@echo "  make versions      		  — versiones de modelos con MLFlow"
 	@echo "  make docker                  — Construye la imagen de la API (contexto raíz)"
+	@echo "  make mlflow                  — Inicia el servidor MLflow"
+	@echo "  make down                    — Detiene todos los contenedores y purga volúmenes y cache"
 	@echo ""
 	@echo "Ambiente de desarrollo y contenedores:"
 	@echo "  make dev-up                  — Levanta FastAPI ($(PORT_LOCAL)) y MLflow ($(MLFLOW_PORT))"
@@ -167,8 +181,13 @@ help:
 	@echo "  make dev-logs-mlflow         — Sigue los logs del servidor de tracking"
 	@echo "  make dev-ps                  — Muestra el estado del clúster local de Docker"
 	@echo ""
+	@echo "Ambiente de desarrollo y contenedores:"
+	@echo "  make prod-up                  — Levanta FastAPI version productivo simulado"	
+	@echo "  make prod-down                — Detiene el ambiente productivo simulado y purga volúmenes locales"
+	@echo ""
 	@echo "Despliegue y Control de Versiones:"
 	@echo "  make deploy VERSION=1.0.0    — Ejecuta las fases de validación del script deploy.sh"
 	@echo "  make rollback VERSION=1.0.0  — Reasigna tags de imagenes y levanta la versión previa"
-	@echo "  make clean                   — Remueve basura de compilación y cachés de python"
+	@echo "  make clean-files                   — Remueve basura de compilación y cachés de python"
+	@echo "  make clean-images                  — Remueve imagenes de Docker no utilizadas"
 	@echo "===================================================================="

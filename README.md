@@ -27,8 +27,10 @@ Proyecto con arquitectura 100% Hermetica con Docker.
 # Clonar el repositorio
 git clone https://github.com/SanehetSiordia/renovacion_prestamo_fastapi.git
 cd renovacion_prestamo_fastapi
-# Instalar Make con el comando en CMD
+# Instalar Make con el comando en CMD:
 winget install ezwinports.make
+# Comprobar Make instalado con:
+make --version
 # Ejecutar comando Make
 Make all
 #Validar entornos virtuales desde Browser:
@@ -36,13 +38,15 @@ http://localhost:8085/          --FastApi Home
 http://localhost:8085/docs      --FastApi OpenApi
 http://localhost:8085/health    --FastApi Healthchek
 http://localhost:5000/          --MLFLOW GUI
-
+#Detener todo los contenedores y purgar cache con:
+make down
+#Para mayor informacion ejecutar comando make:
+make help
 ```
 ---
 
 ## Plan a Futuro
 
-- Agregar Despliegue a entorno de nube
 - Agregar Ingesta Continua con Auto Loader con PySpark y Databricks
 
 ---
