@@ -42,7 +42,9 @@ HEALTHCHECK --interval=30s --timeout=10s --retries=3 \
     CMD python -c "import httpx, os; port = os.getenv('PORT_REMOTE'); httpx.get(f'http://localhost:{port}/health')"
 
 #ENTRYPOINT PARA PREPARAR DATOS DEL CMD
-#ENTRYPOINT ["./entrypoint.sh"]
+RUN chmod +x /entrypoint.sh
+
+ENTRYPOINT ["./entrypoint.sh"]
 
 #COMANDOS DE EJECUCION DEL APLICATIVO: uvicorn api.app:app --host 0.0.0.0 --port 8000 --reload
 CMD ["uvicorn", "api.app:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]

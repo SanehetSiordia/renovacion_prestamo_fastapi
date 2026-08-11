@@ -49,7 +49,7 @@ MANIFEST
 
 # local data and models
 
-#data/processed/*
+data/*
 #models/
 #models/*
 *.h5
@@ -129,7 +129,8 @@ celerybeat.pid
 *.sage.py
 
 # Environments
-#.env
+.env
+.env.*
 .envrc
 .venv
 env/

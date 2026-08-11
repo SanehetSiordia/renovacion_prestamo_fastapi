@@ -27,6 +27,17 @@ Proyecto con arquitectura 100% Hermetica con Docker.
 # Clonar el repositorio
 git clone https://github.com/SanehetSiordia/renovacion_prestamo_fastapi.git
 cd renovacion_prestamo_fastapi
+# Instalar AWS CLI con el comando en Powershell:
+irm https://awscli.amazonaws.com/v2/install.ps1 | iex 
+Documentacion: https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html
+#Verificar instalacion de AWS CLI:
+aws --version
+#Instalar DVC en equipo local con comando:
+winget install --id Iterative.DVC
+#Verificar DVC instalado:
+dvc --version
+# Ejecutar permisos para versionamiento con DVC en la terminal:
+chmod +x entrypoint.sh
 # Instalar Make con el comando en CMD:
 winget install ezwinports.make
 # Comprobar Make instalado con:

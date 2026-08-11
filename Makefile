@@ -3,7 +3,8 @@
 -include .env
 export
 
-.PHONY: all train validate docker \
+.PHONY: create-dirs download-data \
+		all train validate docker \
 		dev-up dev-down dev-logs dev-logs-api dev-logs-mlflow dev-ps \
         deploy rollback clean help check-mlflow mlflow \
 		prod-up prod-down
@@ -12,12 +13,28 @@ COMPOSE_FILE = compose.yml
 COMPOSE_FILE_PROD = compose.prod.yml
 ENV_PROD = .env.prod
 
+LOCAL_DIR_RAW ?= ./data/raw
+LOCAL_DIR_PROCESSED ?= ./data/processed
+
 VERSION ?= $(IMAGE_VERSION)
 ifeq ($(VERSION),)
   VERSION := latest
 endif
 
 IMAGE_NAME_LOCAL ?= $(IMAGE_NAME)
+
+# ── Conexion y descarga de archivos csv ─────────────────────────────────────────────
+# Verifica si exiten las rutas de carpetas necesarias y las crea si no existen.
+create-dirs:
+	@echo "=== Verificando directorios necesarios para datos CSV ==="
+	mkdir -p $(LOCAL_DIR_RAW)
+	mkdir -p $(LOCAL_DIR_PROCESSED)
+
+# 2. Descargar archivos desde S3
+download-data:create-dirs
+	@echo "=== Descargando datos desde AWS S3 ==="
+	aws s3 cp s3://$(AWS_S3_BUCKET)/$(AWS_RAW_FILE) $(LOCAL_DIR_RAW)/$(AWS_RAW_FILE)
+	aws s3 cp s3://$(AWS_S3_BUCKET)/$(AWS_PROCESSED_FILE) $(LOCAL_DIR_PROCESSED)/$(AWS_PROCESSED_FILE)
 
 # ── Validación Dinamica de MLflow ─────────────────────────────────────────────
 # Verifica si el contenedor ya esta saludable. Si no, invoca el target mlflow.
@@ -31,7 +48,7 @@ check-mlflow:
 	fi
 
 # Verifica si el contenedor de la API ya existe y esta corriendo
-check-api:
+check-api: download-data
 	@STATUS=$$(docker inspect --format='{{.State.Status}}' $(DOCKER_FASTAPI_NAME) 2>/dev/null || echo "not_found"); \
 	if [ "$$STATUS" = "running" ]; then \
 		echo "  El contenedor de la API ($(DOCKER_FASTAPI_NAME)) ya esta desplegado y corriendo."; \
@@ -43,7 +60,7 @@ check-api:
 	fi
 
 # ── Pipeline CI/CD local ──────────────────────────────────────────────────────
-all: train tests validate versions docker
+all: download-data train test validate versions docker
 	@echo "✓ Pipeline CI/CD local completado exitosamente de forma aislada."
 
 train: check-mlflow check-api
@@ -91,7 +108,7 @@ down:
 
 # ── Ambiente Desarrollo (Docker Compose) ──────────────────────────────────────
 
-dev-up:
+dev-up: download-data
 	@echo "=== Levantando entorno de desarrollo para $(APP_NAME) ==="
 	docker compose -f $(COMPOSE_FILE) up -d mlflow
 	@echo "Esperando inicialización de MLflow..."
@@ -119,7 +136,7 @@ dev-ps:
 	docker compose -f $(COMPOSE_FILE) ps
 
 # ── Ambiente Productivo - SOLO FAST API CON MODELO (Docker Compose) ──────────────────────────────────────
-prod-up:
+prod-up: download-data
 	@echo "=== Levantando entorno productivo ==="
 	docker builder prune -a -f
 	@eval $$(grep -v '^#' $(ENV_PROD) | xargs) && \
@@ -165,6 +182,7 @@ help:
 	@echo " Opciones de automatizacion del Makefile — Estructura MLOps "
 	@echo "===================================================================="
 	@echo "CI/CD local:"
+	@echo "  make download-data           — Descarga únicamente los CSVs de AWS S3"
 	@echo "  make all                     — Ejecuta flujo completo (train + validate + docker)"
 	@echo "  make train                   — Orquesta el ciclo de entrenamiento en src/"
 	@echo "  make test                    — Ejecutar pruebas unitarias del directorio tests/"
