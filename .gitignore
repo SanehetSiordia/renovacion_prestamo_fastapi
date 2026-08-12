@@ -49,9 +49,10 @@ MANIFEST
 
 # local data and models
 
-data/*
+#data/*
 #models/
 #models/*
+*.csv
 *.h5
 #*.pkl
 *.skops
