@@ -3,7 +3,7 @@
 -include .env
 export
 
-.PHONY: create-dirs download-data \
+.PHONY: create-dirs download-data download-dvc dvc-push\
 		all train validate docker \
 		dev-up dev-down dev-logs dev-logs-api dev-logs-mlflow dev-ps \
         deploy rollback clean help check-mlflow mlflow \
@@ -36,9 +36,15 @@ download-data:create-dirs
 	aws s3 cp s3://$(AWS_S3_BUCKET)/$(AWS_RAW_FILE) $(LOCAL_DIR_RAW)/$(AWS_RAW_FILE)
 	aws s3 cp s3://$(AWS_S3_BUCKET)/$(AWS_PROCESSED_FILE) $(LOCAL_DIR_PROCESSED)/$(AWS_PROCESSED_FILE)
 
+download-dvc: create-dirs
+	@echo "=== Descargando datos desde S3 utilizando DVC ==="
+	dvc pull
+
 dvc-push:
 	@echo "=== Subiendo artefactos a S3 mediante DVC ==="
 	dvc push
+	@echo "=== Verificando estado de DVC ==="
+	dvc status
 
 # ── Validación Dinamica de MLflow ─────────────────────────────────────────────
 # Verifica si el contenedor ya esta saludable. Si no, invoca el target mlflow.
