@@ -36,6 +36,10 @@ download-data:create-dirs
 	aws s3 cp s3://$(AWS_S3_BUCKET)/$(AWS_RAW_FILE) $(LOCAL_DIR_RAW)/$(AWS_RAW_FILE)
 	aws s3 cp s3://$(AWS_S3_BUCKET)/$(AWS_PROCESSED_FILE) $(LOCAL_DIR_PROCESSED)/$(AWS_PROCESSED_FILE)
 
+dvc-push:
+	@echo "=== Subiendo artefactos a S3 mediante DVC ==="
+	dvc push
+
 # ── Validación Dinamica de MLflow ─────────────────────────────────────────────
 # Verifica si el contenedor ya esta saludable. Si no, invoca el target mlflow.
 check-mlflow:
