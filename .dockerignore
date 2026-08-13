@@ -10,6 +10,7 @@ Thumbs.db
 
 # Environments
 .env
+.env*
 .envrc
 .venv
 env/
@@ -22,7 +23,7 @@ __pycache__/
 .ipynb_checkpoints/
 .python-version
 *.ipynb
-
+.pytest_cache/
 
 # Large ML Assets
 notebooks/
@@ -59,14 +60,9 @@ README.md
 .dvc/tmp
 .dvc/cache/*
 .dvc/.gitignore
-#**/*.csv    #--Ignorar cuando se tenga conexion con CLOUD
+*.csv
 
 #NOT IGNORE
 !src/
 !requirements.txt
 !main.py
-!.dvc/config
-!.dvcignore
-!*.dvc
-!dvc.yaml
-!dvc.lock

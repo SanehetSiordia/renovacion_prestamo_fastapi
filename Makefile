@@ -30,21 +30,29 @@ create-dirs:
 	mkdir -p $(LOCAL_DIR_RAW)
 	mkdir -p $(LOCAL_DIR_PROCESSED)
 
-# 2. Descargar archivos desde S3
-download-data:create-dirs
-	@echo "=== Descargando datos desde AWS S3 ==="
-	aws s3 cp s3://$(AWS_S3_BUCKET)/$(AWS_RAW_FILE) $(LOCAL_DIR_RAW)/$(AWS_RAW_FILE)
-	aws s3 cp s3://$(AWS_S3_BUCKET)/$(AWS_PROCESSED_FILE) $(LOCAL_DIR_PROCESSED)/$(AWS_PROCESSED_FILE)
+aws-dvc-up:
+	@echo "=== Verificando estado del contenedor dvc_aws ==="
+	@if [ -z "$$(docker compose -f $(COMPOSE_FILE) ps -q dvc_aws)" ]; then \
+		echo "=== Contenedor no encontrado o apagado. Levantando... ==="; \
+		docker compose -f $(COMPOSE_FILE) up -d dvc_aws; \
+	else \
+		echo "=== El contenedor dvc_aws ya esta levantado y en ejecucion. ==="; \
+	fi
 
-download-dvc: create-dirs
+download-aws: create-dirs aws-dvc-up
+	@echo "=== Descargando datos desde AWS S3 dentro del contenedor ==="
+	docker compose -f $(COMPOSE_FILE) exec dvc_aws aws s3 cp s3://$(AWS_S3_BUCKET)/$(AWS_RAW_FILE) data/raw/$(AWS_RAW_FILE)
+	docker compose -f $(COMPOSE_FILE) exec dvc_aws aws s3 cp s3://$(AWS_S3_BUCKET)/$(AWS_PROCESSED_FILE) data/processed/$(AWS_PROCESSED_FILE)
+
+download-dvc: create-dirs aws-dvc-up
 	@echo "=== Descargando datos desde S3 utilizando DVC ==="
-	dvc pull
+	docker compose -f $(COMPOSE_FILE) exec dvc_aws dvc pull --force
 
-dvc-push:
+dvc-push: aws-dvc-up
 	@echo "=== Subiendo artefactos a S3 mediante DVC ==="
-	dvc push
+	docker compose -f $(COMPOSE_FILE) exec dvc_aws dvc push
 	@echo "=== Verificando estado de DVC ==="
-	dvc status
+	docker compose -f $(COMPOSE_FILE) exec dvc_aws dvc status
 
 # ── Validación Dinamica de MLflow ─────────────────────────────────────────────
 # Verifica si el contenedor ya esta saludable. Si no, invoca el target mlflow.
@@ -58,7 +66,7 @@ check-mlflow:
 	fi
 
 # Verifica si el contenedor de la API ya existe y esta corriendo
-check-api: download-data
+check-api: download-dvc
 	@STATUS=$$(docker inspect --format='{{.State.Status}}' $(DOCKER_FASTAPI_NAME) 2>/dev/null || echo "not_found"); \
 	if [ "$$STATUS" = "running" ]; then \
 		echo "  El contenedor de la API ($(DOCKER_FASTAPI_NAME)) ya esta desplegado y corriendo."; \
@@ -70,7 +78,7 @@ check-api: download-data
 	fi
 
 # ── Pipeline CI/CD local ──────────────────────────────────────────────────────
-all: download-data train test validate versions docker
+all: download-dvc train test validate versions dvc-push docker 
 	@echo "✓ Pipeline CI/CD local completado exitosamente de forma aislada."
 
 train: check-mlflow check-api
@@ -93,12 +101,18 @@ versions: check-mlflow check-api
 	docker exec -i $(DOCKER_FASTAPI_NAME) python src/manage_versions.py
 
 docker:
-	@echo "=== Build de la imagen de la API ==="
-	docker build \
-		--build-arg APP_VERSION=$(APP_VERSION) \
-		--build-arg PORT_LOCAL=$(PORT_LOCAL) \
-		--build-arg PORT_REMOTE=$(PORT_REMOTE) \
-		-t $(IMAGE_NAME_LOCAL):$(VERSION) .
+	@echo "=== Verificando existencia de la imagen de la API ==="
+	@if docker image inspect $(IMAGE_NAME_LOCAL):$(VERSION) >/dev/null 2>&1; then \
+		echo "La imagen $(IMAGE_NAME_LOCAL):$(VERSION) ya existe. Saltando docker build."; \
+	else \
+		echo "=== Build de la imagen de la API ==="; \
+		docker build \
+			--provenance=false \
+			--build-arg APP_VERSION=$(APP_VERSION) \
+			--build-arg PORT_LOCAL=$(PORT_LOCAL) \
+			--build-arg PORT_REMOTE=$(PORT_REMOTE) \
+			-t $(IMAGE_NAME_LOCAL):$(VERSION) .; \
+	fi
 
 mlflow:
 	@echo "=== Iniciando Servidor MLflow de forma independiente ==="
@@ -118,7 +132,7 @@ down:
 
 # ── Ambiente Desarrollo (Docker Compose) ──────────────────────────────────────
 
-dev-up: download-data
+dev-up: download-dvc
 	@echo "=== Levantando entorno de desarrollo para $(APP_NAME) ==="
 	docker compose -f $(COMPOSE_FILE) up -d mlflow
 	@echo "Esperando inicialización de MLflow..."

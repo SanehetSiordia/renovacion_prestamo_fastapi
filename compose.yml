@@ -1,27 +1,47 @@
-services: 
-  mlflow:
+services:
+  dvc_aws:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: dvc-tools
+    container_name: dvc_aws
     env_file:
       - .env
-    image: python:3.12-slim
-    container_name: ${DOCKER_MLFLOW_NAME}
-    environment:
-      - MLFLOW_TRACKING_URI=${MLFLOW_TRACKING_URI_DOCKER}  
     volumes:
-      - ./mlruns:/mlruns      
-    command: 
-      - "bash"
+      - ./.git:/workspace/.git
+      - ./.dvc:/workspace/.dvc
+      - ./data:/workspace/data
+      - ./dvc.yml:/workspace/dvc.yml
+      - ./dvc.lock:/workspace/dvc.lock
+      - ./entrypoint.sh:/workspace/entrypoint.sh
+    working_dir: /workspace
+    command:
+      - "/bin/sh"
       - "-c"
-      - "pip install --root-user-action=ignore --no-cache-dir mlflow -q && mlflow server --host 0.0.0.0 --port 5000 --backend-store-uri sqlite:////mlruns/mlflow.db --allowed-hosts '*'"
-    ports:
-      - '5000:5000'
-    networks:
-      - ${APP_NETWORK_NAME}
-    healthcheck:
-      test: ["CMD", "python3", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:5000/health', timeout=2)"]
-      interval: 10s
-      timeout: 5s
-      retries: 6
-      start_period: 60s
+      - "chmod +x /workspace/entrypoint.sh && /workspace/entrypoint.sh && tail -f /dev/null"
+
+  mlflow:
+      env_file:
+        - .env
+      build:
+        context: .
+        dockerfile: Dockerfile
+        target: mlflow-server
+      container_name: ${DOCKER_MLFLOW_NAME}
+      environment:
+        - MLFLOW_TRACKING_URI=${MLFLOW_TRACKING_URI_DOCKER}
+      volumes:
+        - ./mlruns:/mlruns
+      ports:
+        - '5000:5000'
+      networks:
+        - ${APP_NETWORK_NAME}
+      healthcheck:
+        test: ["CMD", "python3", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:5000/health', timeout=2)"]
+        interval: 5s
+        timeout: 3s
+        retries: 5
+        start_period: 5s
 
   fastapi:
     env_file:
