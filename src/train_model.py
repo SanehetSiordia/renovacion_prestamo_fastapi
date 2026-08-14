@@ -417,9 +417,13 @@ def exportar_modelo_resultados(modelo: ClassifierMixin, datos_json: dict) -> Non
     with open(C.MODEL_PKL_PATH, "wb") as f:
         pickle.dump(modelo, f)
     log.info(f"Modelo guardado en formato Pickle en: {C.MODEL_PKL_PATH}")
-
+    
     sio.dump(modelo, C.MODEL_SKOPS_PATH)
     log.info(f"Modelo guardado en formato Skops en: {C.MODEL_SKOPS_PATH}")
+
+    if isinstance(modelo, XGBClassifier):
+        modelo.get_booster().save_model(C.MODEL_JSON_PATH)
+        log.info(f"Modelo XGBoost guardado nativamente en JSON en: {C.MODEL_JSON_PATH}")
 
 
 # ── Función principal ─────────────────────────────────────────────────────

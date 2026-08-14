@@ -18,6 +18,7 @@ PROCESSED_DATA_PATH = DATA_PROCESSED_DIR / 'processed_renovacion_prestamo.csv'
 
 MODEL_PKL_PATH      = ARTIFACTS_DIR / 'modelo.pkl'
 MODEL_SKOPS_PATH      = ARTIFACTS_DIR / 'modelo.skops'
+MODEL_JSON_PATH      = ARTIFACTS_DIR / 'modelo.json'
 METRICS_PATH    = ARTIFACTS_DIR / 'metrics.json'
 
 # ── Columnas  para Preprocesamiento ────────────────────────────────────────────────
