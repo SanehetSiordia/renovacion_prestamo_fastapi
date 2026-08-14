@@ -1,10 +1,11 @@
 services:
-  dvc_aws:
+  dvc_aws_service:
     build:
       context: .
       dockerfile: Dockerfile
-      target: dvc-tools
-    container_name: dvc_aws
+      target: dvc_aws_server
+    image: ${IMAGE_NAME_DVC}:${IMAGE_VERSION}
+    container_name: ${DOCKER_DVC_NAME}
     env_file:
       - .env
     volumes:
@@ -20,13 +21,14 @@ services:
       - "-c"
       - "chmod +x /workspace/entrypoint.sh && /workspace/entrypoint.sh && tail -f /dev/null"
 
-  mlflow:
+  mlflow_service:
       env_file:
         - .env
       build:
         context: .
         dockerfile: Dockerfile
-        target: mlflow-server
+        target: mlflow_server
+      image: ${IMAGE_NAME_MLFLOW}:${IMAGE_VERSION}
       container_name: ${DOCKER_MLFLOW_NAME}
       environment:
         - MLFLOW_TRACKING_URI=${MLFLOW_TRACKING_URI_DOCKER}
@@ -43,19 +45,19 @@ services:
         retries: 5
         start_period: 5s
 
-  fastapi:
+  training_service:
     env_file:
       - .env
     build:
       context: .
-      target: ${STAGE}
       dockerfile: Dockerfile
+      target: training_server
       args:
         - APP_VERSION=${APP_VERSION}
         - PORT_LOCAL=${PORT_LOCAL}
         - PORT_REMOTE=${PORT_REMOTE}
-    image: ${IMAGE_NAME}:${IMAGE_VERSION}
-    container_name: ${DOCKER_FASTAPI_NAME}
+    image: ${IMAGE_NAME_TRAINING}:${IMAGE_VERSION}
+    container_name: ${DOCKER_TRAINING_NAME}
     restart: always
     environment:
       - PIPELINE_VERSION=${PIPELINE_VERSION}
@@ -72,7 +74,7 @@ services:
     networks:
       - ${APP_NETWORK_NAME}
     depends_on:
-      mlflow:
+      mlflow_service:
         condition: service_healthy
 
 networks:
