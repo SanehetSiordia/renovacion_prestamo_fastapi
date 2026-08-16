@@ -31,7 +31,7 @@ services:
       image: ${IMAGE_NAME_MLFLOW}:${IMAGE_VERSION}
       container_name: ${DOCKER_MLFLOW_NAME}
       environment:
-        - MLFLOW_TRACKING_URI=${MLFLOW_TRACKING_URI_DOCKER}
+        - MLFLOW_TRACKING_URI_DOCKER=${MLFLOW_TRACKING_URI_DOCKER}
       volumes:
         - ./mlruns:/mlruns
       ports:
@@ -52,23 +52,22 @@ services:
       context: .
       dockerfile: Dockerfile
       target: training_server
-      args:
-        - APP_VERSION=${APP_VERSION}
-        - PORT_LOCAL=${PORT_LOCAL}
-        - PORT_REMOTE=${PORT_REMOTE}
     image: ${IMAGE_NAME_TRAINING}:${IMAGE_VERSION}
     container_name: ${DOCKER_TRAINING_NAME}
     restart: always
+    command: tail -f /dev/null
     environment:
       - PIPELINE_VERSION=${PIPELINE_VERSION}
-      - PORT_LOCAL=${PORT_LOCAL}
-      - PORT_REMOTE=${PORT_REMOTE}
       - PYTHONPATH=/app
       - MLFLOW_TRACKING_URI=${MLFLOW_TRACKING_URI}
-    ports:
-      - '${PORT_LOCAL}:${PORT_REMOTE}'    
     volumes:
-      - .:/app 
+      - ./requirements:/app/requirements:ro
+      - ./setup.cfg:/app/setup.cfg:ro
+      - ./config.py:/app/config.py:ro
+      - ./src:/app/src
+      - ./tests:/app/tests
+      - ./artifacts:/app/artifacts
+      - ./data:/app/data
       - /app/__pycache__
       - /app/.pytest_cache
     networks:

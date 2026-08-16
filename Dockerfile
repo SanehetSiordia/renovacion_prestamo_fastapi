@@ -31,28 +31,14 @@ LABEL version=${APP_VERSION}
 ENV PIP_DISABLE_PIP_VERSION_CHECK=1 \
     PIP_ROOT_USER_ACTION=ignore \
     PYTHONDONTWRITEBYTECODE=1 \
-    PYTHONUNBUFFERED=1 \
-    APP_VERSION=${APP_VERSION} \
-    PORT_REMOTE=${PORT_REMOTE} \
-    PORT_LOCAL=${PORT_LOCAL}
+    PYTHONUNBUFFERED=1
 
 WORKDIR /app
 
-COPY requirements.txt .
+COPY requirements/ /app/requirements/
 
 # ── Instalar dependencias del sistema (mínimas) ───────────────────────────────
 RUN --mount=type=cache,target=/root/.cache/pip \
-    pip install --prefer-binary -r requirements.txt
-    
-#COPIAR ARCHIVOS EN DIRECTORIO LOCAL EN DIRECTORIO DE LA IMAGEN
-COPY . .
+    pip install --prefer-binary -r /app/requirements/training.txt
 
-#EXPOSICION DEL PUERTO DE LA IMAGEN
-EXPOSE ${PORT_REMOTE}
-
-# ── Health check para que Docker sepa si el contenedor está sano ──────────────
-HEALTHCHECK --interval=30s --timeout=10s --retries=3 \
-    CMD python -c "import httpx, os; port = os.getenv('PORT_REMOTE'); httpx.get(f'http://localhost:{port}/health')"
-
-#COMANDOS DE EJECUCION DEL APLICATIVO: uvicorn api.app:app --host 0.0.0.0 --port 8000 --reload
-CMD ["uvicorn", "api.app:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
+CMD ["tail", "-f", "/dev/null"]
