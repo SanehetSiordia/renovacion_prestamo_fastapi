@@ -76,6 +76,35 @@ services:
       mlflow_service:
         condition: service_healthy
 
+  fastapi_service:
+    env_file:
+      - .env
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: fastapi_server
+      args:
+      - PIPELINE_VERSION=${PIPELINE_VERSION}
+      - PORT_LOCAL=${PORT_LOCAL}
+      - PORT_REMOTE=${PORT_REMOTE}
+      - PYTHONPATH=/app
+    image: ${IMAGE_NAME_FASTAPI}:${IMAGE_VERSION}
+    container_name: ${DOCKER_FASTAPI_NAME}
+    restart: always
+    environment:
+      - PYTHONPATH=/app
+      - PORT_LOCAL=${PORT_LOCAL}
+      - PORT_REMOTE=${PORT_REMOTE}
+    ports:
+      - '${PORT_LOCAL}:${PORT_REMOTE}'    
+    volumes:
+      - ./requirements:/app/requirements:ro
+      - ./config.py:/app/config.py:ro
+      - ./artifacts:/app/artifacts
+      - ./api:/app/api
+    networks:
+      - ${APP_NETWORK_NAME}
+
 networks:
   renovacion_prestamo-net:
     name: ${APP_NETWORK_NAME}

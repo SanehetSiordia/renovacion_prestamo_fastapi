@@ -1,9 +1,10 @@
-import os
-import sys
-import logging
 import json
+import logging
+import os
 import pickle
-import pandas as pd
+from pathlib import Path
+import sys
+import xgboost as xgb
 
 from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
@@ -52,16 +53,21 @@ class Predictor:
         self.inicializado = False
 
     def predecir(self, datos: dict) -> dict:
-        
         if not self.inicializado:
-            self.cargar()
+          self.cargar()
 
         if self.modelo is None:
             raise RuntimeError("Modelo no cargado. Llama a cargar() primero.")
-        
-        datos_alineados = {f: datos.get(f, 0) for f in FEATURES}
-        X = pd.DataFrame([datos_alineados])[FEATURES]
-        proba = float(self.modelo.predict_proba(X)[0][1])
+
+        fila_valores = [float(datos.get(f, 0.0)) for f in FEATURES]
+        X = [fila_valores]
+
+        if hasattr(self.modelo, "predict_proba"):
+            proba = float(self.modelo.predict_proba(X)[0][1])
+        else:
+            dmatrix = xgb.DMatrix(X, feature_names=FEATURES)
+            pred = self.modelo.predict(dmatrix)
+            proba = float(pred[0])
 
         return {
             "score_riesgo":      round(proba, 4),

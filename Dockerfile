@@ -20,11 +20,9 @@ CMD ["mlflow", "server", "--host", "0.0.0.0", "--port", "5000", "--backend-store
 FROM python:3.12-slim AS training_server
 
 ARG APP_VERSION
-ARG PORT_LOCAL
-ARG PORT_REMOTE
 
 LABEL maintainer="MLOps Renovacion de Prestamo"
-LABEL description="API de predicción para renovacion de Prestamo"
+LABEL description="Modelo de entretamiento para predicción de renovacion de Prestamo"
 LABEL version=${APP_VERSION}
 
 # No mostrar actualización de pip y evitar escritura de archivos .pyc
@@ -42,3 +40,38 @@ RUN --mount=type=cache,target=/root/.cache/pip \
     pip install --prefer-binary -r /app/requirements/training.txt
 
 CMD ["tail", "-f", "/dev/null"]
+
+
+# ── Etapa 4- Servidor de API FastAPI ─────────────────────────────────
+FROM python:3.12-slim AS fastapi_server
+
+ARG APP_VERSION
+ARG PORT_REMOTE
+
+LABEL maintainer="MLOps Renovacion de Prestamo"
+LABEL description="API de predicción para renovacion de Prestamo"
+LABEL version=${APP_VERSION}
+
+# No mostrar actualización de pip y evitar escritura de archivos .pyc
+ENV PIP_DISABLE_PIP_VERSION_CHECK=1 \
+    PIP_ROOT_USER_ACTION=ignore \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1\
+    PORT_REMOTE=${PORT_REMOTE}
+
+WORKDIR /app
+
+COPY requirements/ /app/requirements/
+
+RUN --mount=type=cache,target=/root/.cache/pip \
+    pip install --prefer-binary -r /app/requirements/fastapi.txt
+
+#EXPOSICION DEL PUERTO DE LA IMAGEN
+EXPOSE ${PORT_REMOTE}
+
+# ── Health check para que Docker sepa si el contenedor está sano ──────────────
+HEALTHCHECK --interval=30s --timeout=10s --retries=3 \
+    CMD python -c "import httpx, os; port = os.getenv('PORT_REMOTE'); httpx.get(f'http://localhost:{port}/health')"
+
+#COMANDOS DE EJECUCION DEL APLICATIVO: uvicorn api.app:app --host 0.0.0.0 --port 8000 --reload
+CMD ["uvicorn", "api.app:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
