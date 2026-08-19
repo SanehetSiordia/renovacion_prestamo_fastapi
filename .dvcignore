@@ -17,10 +17,12 @@ __pycache__/
 notebooks/
 *.ipynb
 entrypoint.sh
+.vscode/
 
 # Docker
 .dockerignore
 *.tar
+.devcontainer/
 
 # MLflow 
 mlruns/

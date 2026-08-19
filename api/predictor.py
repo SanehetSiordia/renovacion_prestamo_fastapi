@@ -17,6 +17,7 @@ class DummyModel:
 log = logging.getLogger(__name__)
 
 MODEL_PATH   = C.MODEL_PKL_PATH
+MODEL_JSON_PATH = C.MODEL_JSON_PATH
 METRICS_PATH = C.METRICS_PATH
 FEATURES = C.FEATURES
 UMBRAL   = C.UMBRAL_MIN
@@ -28,20 +29,33 @@ class Predictor:
         self.inicializado = False
 
     def cargar(self) -> None:
-        # Cargar Modelo SI ESQUE EXISTE
-        if MODEL_PATH.exists() and METRICS_PATH.exists():
-            try:                
-                log.info(f"Buscando modelo real para cargar en: {MODEL_PATH}")
-                with open(MODEL_PATH, "rb") as f:
-                    self.modelo = pickle.load(f)
+        try:
+            if METRICS_PATH.exists():
                 log.info(f"Buscando metricas del modelo en: {METRICS_PATH}")
                 with open(METRICS_PATH) as f:
-                    self.metricas = json.load(f)                
+                    self.metricas = json.load(f)
+                    algoritmo = self.metricas.get("algoritmo", "").strip()
+            else:
+                log.warning(f"Archivo de metricas no encontrado: {METRICS_PATH}")
+
+            if algoritmo.lower() == "xgboost":                           
+                log.info(f"Buscando modelo real para cargar en: {MODEL_JSON_PATH}")
+                with open(MODEL_JSON_PATH, "rb") as f:
+                    self.modelo = xgb.Booster()
+                    self.modelo.load_model(MODEL_JSON_PATH)  
+                self.inicializado = True
+                log.info(f"✓ Modelo real cargado exitosamente: {type(self.modelo).__name__}")
+                return            
+            else:               
+                log.info(f"Buscando modelo real para cargar en: {MODEL_PATH}")
+                with open(MODEL_PATH, "rb") as f:
+                    self.modelo = pickle.load(f)    
                 self.inicializado = True
                 log.info(f"✓ Modelo real cargado exitosamente: {type(self.modelo).__name__}")
                 return
-            except Exception as e:
-                log.warning(f"Error leyendo los archivos reales, usando contingencia: {str(e)}")
+            
+        except Exception as e:
+            log.warning(f"Error leyendo los archivos reales, usando contingencia: {str(e)}")
 
         # Cargar Clase SI EL MODELO NO EXISTE
         log.warning(f"⚠️ {MODEL_PATH} no encontrado. Inicializando con Modelo Dummy para permitir Pipelines CI/CD.")
