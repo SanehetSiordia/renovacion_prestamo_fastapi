@@ -175,7 +175,7 @@ jobs:
           except ImportError:
               pass
           import os
-          path = 'artifacts/modelo.pkl'
+          path = 'artifacts/model.pkl'
           if os.path.exists(path):
               m = pickle.load(open(path, 'rb'))
               print('✓ Modelo cargado correctamente en Docker:', type(m).__name__)

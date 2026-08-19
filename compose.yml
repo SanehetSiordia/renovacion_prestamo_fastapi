@@ -105,6 +105,21 @@ services:
     networks:
       - ${APP_NETWORK_NAME}
 
+  gcp_vertexai_service:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: gcp_vertexai_server
+    image: ${IMAGE_NAME_GCP_VERTEXAI}:${IMAGE_VERSION}
+    container_name: ${DOCKER_GCP_VERTEXAI_NAME}
+    env_file:
+      - .env
+    volumes:
+      - ./artifacts:/workspace/artifacts
+      - ${APPDATA}/gcloud:/root/.config/gcloud
+    working_dir: /workspace
+    command: tail -f /dev/null
+
 networks:
   renovacion_prestamo-net:
     name: ${APP_NETWORK_NAME}

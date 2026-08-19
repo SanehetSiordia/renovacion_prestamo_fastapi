@@ -57,7 +57,12 @@ make help
 ---
 
 ## Plan a Futuro
-
+- Revisar version de _pip install google-cloud-aiplatform_
+ : **pip show google-cloud-aiplatform**
+- Registro de Imagenes para prediccion en Vertex AI - **https://console.cloud.google.com/artifacts/docker/vertex-ai/us/prediction**
+- Generar credenciales ADC en windows host: **gcloud auth application-default login**
+- Abrir las credenciales %APPDATA%\gcloud\application_default_credentials.json
+- Guardar las credenciales generadas a ruta /credentials/
 - Agregar Ingesta Continua con Auto Loader con PySpark y Databricks
 
 ---

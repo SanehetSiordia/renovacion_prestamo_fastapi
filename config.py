@@ -16,9 +16,9 @@ ARTIFACTS_DIR = ROOT_DIR / 'artifacts'
 RAW_DATA_PATH   = DATA_RAW_DIR      / 'raw_renovacion_prestamo.csv'
 PROCESSED_DATA_PATH = DATA_PROCESSED_DIR / 'processed_renovacion_prestamo.csv'
 
-MODEL_PKL_PATH      = ARTIFACTS_DIR / 'modelo.pkl'
-MODEL_SKOPS_PATH      = ARTIFACTS_DIR / 'modelo.skops'
-MODEL_JSON_PATH      = ARTIFACTS_DIR / 'modelo.json'
+MODEL_PKL_PATH      = ARTIFACTS_DIR / 'model.pkl'
+MODEL_SKOPS_PATH      = ARTIFACTS_DIR / 'model.skops'
+MODEL_JSON_PATH      = ARTIFACTS_DIR / 'model.json'
 METRICS_PATH    = ARTIFACTS_DIR / 'metrics.json'
 
 # ── Columnas  para Preprocesamiento ────────────────────────────────────────────────

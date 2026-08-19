@@ -6,6 +6,7 @@
 *.log
 tmp/
 temp/
+credentials/
 
 # Git & System
 .git/

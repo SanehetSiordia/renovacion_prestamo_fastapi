@@ -20,14 +20,28 @@ ifeq ($(VERSION),)
   VERSION			:= latest
 endif
 
-MLFLOW_PORT			?= $(MLFLOW_PORT)
-IMAGE_TRAIN			?= $(IMAGE_NAME_TRAINING)
-IMAGE_SERVING		?= $(IMAGE_NAME_SERVING)
-IMAGE_MLFLOW		?= $(IMAGE_NAME_MLFLOW)
-IMAGE_DVC			?= $(IMAGE_NAME_DVC)
+MLFLOW_PORT					?= $(MLFLOW_PORT)
+IMAGE_TRAIN					?= $(IMAGE_NAME_TRAINING)
+IMAGE_SERVING				?= $(IMAGE_NAME_SERVING)
+IMAGE_MLFLOW				?= $(IMAGE_NAME_MLFLOW)
+IMAGE_DVC					?= $(IMAGE_NAME_DVC)
+IMAGE_NAME_GCP_VERTEXAI		?= $(IMAGE_NAME_GCP_VERTEXAI)
 
-DOCKER_TRAINING_NAME ?= $(DOCKER_TRAINING_NAME)
-DOCKER_MLFLOW_NAME ?= $(DOCKER_MLFLOW_NAME)
+DOCKER_TRAINING_NAME 		?= $(DOCKER_TRAINING_NAME)
+DOCKER_MLFLOW_NAME 			?= $(DOCKER_MLFLOW_NAME)
+DOCKER_GCP_VERTEXAI_NAME	?= $(DOCKER_GCP_VERTEXAI_NAME)
+
+GOOGLE_APPLICATION_CREDENTIALS	?= $(GOOGLE_APPLICATION_CREDENTIALS)
+GCP_DESTINATION     			?= $(GCP_DESTINATION)
+GCP_CONTAINER_IMAGE_URI 		?= $(GCP_CONTAINER_IMAGE_URI)
+GCP_FASTAPI_REMOTE  			?= $(GCP_ARTIFACT_REGISTRY_URI)/$(IMAGE_NAME_FASTAPI):$(IMAGE_VERSION)
+GCP_ARTIFACT_REGISTRY_URI		?= $(GCP_ARTIFACT_REGISTRY_URI)
+#Nombres de servicios Docker Compose
+TRAINING_SERVICE_NAME		?= training_service
+GCP_SERVICE_NAME			?= gcp_vertexai_service
+MLFLOW_SERVICE_NAME			?= mlflow_service
+DVC_AWS_SERVICE_NAME		?= dvc_aws_service
+FASTAPI_SERVICE_NAME		?= fastapi_service
 
 # ── 1. Gestión de conexion y descarga de archivos csv ─────────────────────────────────────────────
 # Verifica si exiten las rutas de carpetas necesarias y las crea si no existen.
@@ -38,25 +52,25 @@ create-dirs:
 
 aws-dvc-up:
 	@echo "=== Verificando estado del contenedor dvc_aws ==="
-	@if [ -z "$$(docker compose -f $(COMPOSE_FILE) ps -q dvc_aws_service 2>/dev/null)" ]; then \
+	@if [ -z "$$(docker compose -f $(COMPOSE_FILE) ps -q $(DVC_AWS_SERVICE_NAME) 2>/dev/null)" ]; then \
 		echo "=== Levantando contenedor DVC-AWS ==="; \
-		docker compose -f $(COMPOSE_FILE) up -d dvc_aws_service; \
+		docker compose -f $(COMPOSE_FILE) up -d $(DVC_AWS_SERVICE_NAME); \
 	fi
 
 download-aws: create-dirs aws-dvc-up
 	@echo "=== Descargando datos desde AWS S3 dentro del contenedor ==="
-	docker compose -f $(COMPOSE_FILE) exec dvc_aws_service aws s3 cp s3://$(AWS_S3_BUCKET)/$(AWS_RAW_FILE) data/raw/$(AWS_RAW_FILE)
-	docker compose -f $(COMPOSE_FILE) exec dvc_aws_service aws s3 cp s3://$(AWS_S3_BUCKET)/$(AWS_PROCESSED_FILE) data/processed/$(AWS_PROCESSED_FILE)
+	docker compose -f $(COMPOSE_FILE) exec $(DVC_AWS_SERVICE_NAME) aws s3 cp s3://$(AWS_S3_BUCKET)/$(AWS_RAW_FILE) data/raw/$(AWS_RAW_FILE)
+	docker compose -f $(COMPOSE_FILE) exec $(DVC_AWS_SERVICE_NAME) aws s3 cp s3://$(AWS_S3_BUCKET)/$(AWS_PROCESSED_FILE) data/processed/$(AWS_PROCESSED_FILE)
 
 download-dvc: create-dirs aws-dvc-up
 	@echo "=== Descargando datos desde S3 utilizando DVC ==="
-	docker compose -f $(COMPOSE_FILE) exec dvc_aws_service dvc pull --force
+	docker compose -f $(COMPOSE_FILE) exec $(DVC_AWS_SERVICE_NAME) dvc pull --force
 
 dvc-push: aws-dvc-up
 	@echo "=== Subiendo artefactos a S3 mediante DVC ==="
-	docker compose -f $(COMPOSE_FILE) exec dvc_aws_service dvc push
+	docker compose -f $(COMPOSE_FILE) exec $(DVC_AWS_SERVICE_NAME) dvc push
 	@echo "=== Verificando estado de DVC ==="
-	docker compose -f $(COMPOSE_FILE) exec dvc_aws_service dvc status
+	docker compose -f $(COMPOSE_FILE) exec $(DVC_AWS_SERVICE_NAME) dvc status
 
 # ── 2. Gestión de MLflow ─────────────────────────────────────────────
 check-mlflow:
@@ -65,7 +79,7 @@ check-mlflow:
 		echo "Contenedor $(DOCKER_MLFLOW_NAME) listo y saludable."; \
 	else \
 		echo "Contenedor $(DOCKER_MLFLOW_NAME) no disponible (Estado: $$STATUS). Levantando servicio..."; \
-		docker compose -f $(COMPOSE_FILE) up -d --build mlflow_service; \
+		docker compose -f $(COMPOSE_FILE) up -d --build $(MLFLOW_SERVICE_NAME); \
 		echo "=== Esperando que el contenedor $(DOCKER_MLFLOW_NAME) pase el Healthcheck... ==="; \
 		until [ "$$(docker inspect --format='{{.State.Health.Status}}' $(DOCKER_MLFLOW_NAME) 2>/dev/null)" = "healthy" ]; do \
 			sleep 2; \
@@ -80,7 +94,7 @@ check-training: check-mlflow
 		echo "Contenedor $(DOCKER_TRAINING_NAME) listo y corriendo."; \
 	else \
 		echo "Levantando contenedor de entrenamiento..."; \
-		docker compose -f $(COMPOSE_FILE) up -d --build training_service; \
+		docker compose -f $(COMPOSE_FILE) up -d --build $(TRAINING_SERVICE_NAME); \
 		echo "=== Esperando que el contenedor $(DOCKER_TRAINING_NAME) se inicie... ==="; \
 		until [ "$$(docker inspect --format='{{.State.Status}}' $(DOCKER_TRAINING_NAME) 2>/dev/null)" = "running" ]; do \
 			sleep 1; \
@@ -88,12 +102,31 @@ check-training: check-mlflow
 		echo "Contenedor $(DOCKER_TRAINING_NAME) inicializado."; \
 	fi
 
-#PENDIENTE: Agregar target para construir imagen de inferencia ligera (serving) para Cloud Run
-check-serving:
-	@echo "=== Construyendo Imagen de Inferencia (Ligera / Cloud Run) ==="
-	docker build \
-		--target=serving \
-		-t $(IMAGE_SERVING):$(VERSION) .
+# Construcción de imagen para GCP Vertex AI con validacin de permisos
+gcp-service-up:
+	@echo "=== Verificando estado del contenedor GCP Vertex AI ==="
+	@if [ -z "$$(docker compose -f $(COMPOSE_FILE) ps -q $(GCP_SERVICE_NAME) 2>/dev/null)" ]; then \
+		echo "=== Levantando contenedor GCP ==="; \
+		docker compose -f $(COMPOSE_FILE) up -d $(GCP_SERVICE_NAME); \
+	fi
+
+validate-gcp-permissions: gcp-service-up
+	@echo "=== 1. Validando cuenta activa y proyecto en el contenedor ==="
+	MSYS_NO_PATHCONV=1 docker compose -f $(COMPOSE_FILE) exec $(GCP_SERVICE_NAME) \
+		gcloud config get-value account
+	MSYS_NO_PATHCONV=1 docker compose -f $(COMPOSE_FILE) exec $(GCP_SERVICE_NAME) \
+		gcloud config set project $(GCP_PROJECT_ID)
+	@echo "=== 2. Validando permisos en Google Cloud Storage (Bucket) ==="
+	MSYS_NO_PATHCONV=1 docker compose -f $(COMPOSE_FILE) exec $(GCP_SERVICE_NAME) \
+		gcloud storage ls $(GCP_DESTINATION)/
+	@echo "=== 3. Validando permisos en Artifact Registry ==="
+	MSYS_NO_PATHCONV=1 docker compose -f $(COMPOSE_FILE) exec $(GCP_SERVICE_NAME) \
+		gcloud artifacts repositories list --location=$(GCP_DEFAULT_REGION)
+	@echo "=== 4. Validando permisos en Vertex AI ==="
+	MSYS_NO_PATHCONV=1 docker compose -f $(COMPOSE_FILE) exec $(GCP_SERVICE_NAME) \
+		gcloud ai models list --region=$(GCP_DEFAULT_REGION)
+	@echo " Todos los permisos validados exitosamente en GCP."
+
 
 # ── 4. Pipeline de CI / CD Local (Entrenamiento y Validación) ──────────────────────────────────────────────────────
 all: download-dvc check-training train test validate versions
@@ -123,7 +156,7 @@ versions:
 # ── 5. Entorno de Desarrollo Local ──────────────────────────────────────
 dev-up: download-dvc check-mlflow check-training
 	@echo "Levantando modelo de entrenamiento..."
-	docker compose -f $(COMPOSE_FILE) up -d training_service
+	docker compose -f $(COMPOSE_FILE) up -d $(TRAINING_SERVICE_NAME)
 	@echo "=== Entorno listo ==="
 	@echo "  MODEL TRAINING: http://localhost:$(PORT_LOCAL)"
 	@echo "  MLflow: http://localhost:$(MLFLOW_PORT)"
@@ -136,10 +169,10 @@ dev-logs:
 	docker compose -f $(COMPOSE_FILE) logs -f
 
 dev-logs-api:
-	docker compose -f $(COMPOSE_FILE) logs -f training_service
+	docker compose -f $(COMPOSE_FILE) logs -f $(TRAINING_SERVICE_NAME)
 
 dev-logs-mlflow:
-	docker compose -f $(COMPOSE_FILE) logs -f mlflow_service
+	docker compose -f $(COMPOSE_FILE) logs -f $(MLFLOW_SERVICE_NAME)
 
 dev-ps:
 	docker compose -f $(COMPOSE_FILE) ps

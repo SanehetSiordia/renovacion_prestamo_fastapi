@@ -75,3 +75,25 @@ HEALTHCHECK --interval=30s --timeout=10s --retries=3 \
 
 #COMANDOS DE EJECUCION DEL APLICATIVO: uvicorn api.app:app --host 0.0.0.0 --port 8000 --reload
 CMD ["uvicorn", "api.app:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
+
+
+# ── Etapa 5- Gestor de Modelos ML (GCP Bucket + Vertex AI) ────────────────
+FROM python:3.12-slim AS gcp_vertexai_server
+
+WORKDIR /workspace
+
+# Instalar dependencias del sistema y Google Cloud SDK CLI
+# Sitio oficial: https://docs.cloud.google.com/sdk/docs/install-sdk#deb
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    ca-certificates \
+    gnupg \
+    curl \
+    && echo "deb [signed-by=/usr/share/keyrings/cloud.google.gpg] https://packages.cloud.google.com/apt cloud-sdk main" \
+    | tee -a /etc/apt/sources.list.d/google-cloud-sdk.list \
+    && curl https://packages.cloud.google.com/apt/doc/apt-key.gpg \
+    | gpg --dearmor -o /usr/share/keyrings/cloud.google.gpg \
+    && apt-get update -y && apt-get install google-cloud-cli -y \
+    --no-install-recommends \
+    && apt-get clean && rm -rf /var/lib/apt/lists/*    
+
+CMD ["tail", "-f", "/dev/null"]

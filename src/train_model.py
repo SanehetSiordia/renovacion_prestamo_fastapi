@@ -1,7 +1,7 @@
 """
 train_model.py — entrena el modelo y crea los artefactos correspondientes.
 Entrada : data/processed/processed_renovacion_prestamo.csv
-Salida  : artifacts/metrics.json | artifacts/modelo.pkl | artifacts/modelo.skops
+Salida  : artifacts/metrics.json | artifacts/model.pkl | artifacts/model.skops
 """
 import sys
 import os
