@@ -29,3 +29,7 @@ entrypoint.sh
 mlruns/
 mlruns.db
 .coverage
+
+#Models
+artifacts/
+*.json

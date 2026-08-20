@@ -59,6 +59,9 @@ MANIFEST
 *.skops
 *.pth
 *.onnx
+model.json
+model.pkl
+model.skops
 
 # DVC local state and cache
 .dvc/config.local
@@ -132,7 +135,7 @@ celerybeat.pid
 
 # Environments
 .env
-.env.*
+.env.prod
 .envrc
 .venv
 env/
@@ -175,3 +178,4 @@ __marimo__/
 !dvc.yaml
 !dvc.lock
 !.dvcignore
+!.env.example
