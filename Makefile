@@ -1,12 +1,14 @@
-# Makefile — Pipeline CI/CD Local + Desarrollo (Renovación de Préstamo)
+# Makefile — Pipeline CI/CD Local + Desarrollo (Renovacion de Prestamo)
 
 -include .env
 export
 
-.PHONY: create-dirs download-dvc dvc-push \
-        all train test validate versions check-training build-training build-serving \
+.PHONY: create-dirs aws-dvc-up download-aws download-dvc dvc-push \
+        check-mlflow check-training \
+        gcp-service-up validate-gcp-permissions upload-gcp-models register-vertex push-fastapi-gcp all-gcp \
+        all train test validate versions \
         dev-up dev-down dev-logs dev-logs-api dev-logs-mlflow dev-ps \
-        prod-up prod-down deploy rollback clean-files clean-all help check-mlflow build-mlflow
+        prod-up prod-down deploy rollback clean-files clean-all help
 
 COMPOSE_FILE		?= compose.yml
 COMPOSE_FILE_PROD	?= compose.prod.yml
@@ -36,6 +38,7 @@ GCP_DESTINATION     			?= $(GCP_DESTINATION)
 GCP_CONTAINER_IMAGE_URI 		?= $(GCP_CONTAINER_IMAGE_URI)
 GCP_FASTAPI_REMOTE  			?= $(GCP_ARTIFACT_REGISTRY_URI)/$(IMAGE_NAME_FASTAPI):$(IMAGE_VERSION)
 GCP_ARTIFACT_REGISTRY_URI		?= $(GCP_ARTIFACT_REGISTRY_URI)
+
 #Nombres de servicios Docker Compose
 TRAINING_SERVICE_NAME		?= training_service
 GCP_SERVICE_NAME			?= gcp_vertexai_service
@@ -43,8 +46,8 @@ MLFLOW_SERVICE_NAME			?= mlflow_service
 DVC_AWS_SERVICE_NAME		?= dvc_aws_service
 FASTAPI_SERVICE_NAME		?= fastapi_service
 
-# ── 1. Gestión de conexion y descarga de archivos csv ─────────────────────────────────────────────
-# Verifica si exiten las rutas de carpetas necesarias y las crea si no existen.
+# ── 1. Gestion de Datos y Versionado (AWS S3 & DVC) ─────────────────────────────────────────────
+
 create-dirs:
 	@echo "=== Verificando directorios necesarios para datos CSV ==="
 	mkdir -p $(LOCAL_DIR_RAW)
@@ -72,7 +75,8 @@ dvc-push: aws-dvc-up
 	@echo "=== Verificando estado de DVC ==="
 	docker compose -f $(COMPOSE_FILE) exec $(DVC_AWS_SERVICE_NAME) dvc status
 
-# ── 2. Gestión de MLflow ─────────────────────────────────────────────
+# ── 2. Pipeline de CI/CD Local (Entrenamiento & Calidad) ──────────────────────────────────────────────────────
+
 check-mlflow:
 	@STATUS=$$(docker inspect --format='{{.State.Health.Status}}' $(DOCKER_MLFLOW_NAME) 2>/dev/null || echo "not_found"); \
 	if [ "$$STATUS" = "healthy" ]; then \
@@ -87,7 +91,6 @@ check-mlflow:
 		echo "Contenedor $(DOCKER_MLFLOW_NAME) listo y saludable para recibir metricas."; \
 	fi
 
-# ── 3. Construcción de Imágenes (Multi-Stage) ───────────────────────────────
 check-training: check-mlflow
 	@STATUS=$$(docker inspect --format='{{.State.Status}}' $(DOCKER_TRAINING_NAME) 2>/dev/null || echo "not_found"); \
 	if [ "$$STATUS" = "running" ]; then \
@@ -102,7 +105,33 @@ check-training: check-mlflow
 		echo "Contenedor $(DOCKER_TRAINING_NAME) inicializado."; \
 	fi
 
-# Construcción de imagen para GCP Vertex AI con validacin de permisos
+all: download-dvc check-training train test validate versions
+	@echo "====================================================="
+	@echo "Pipeline completado. Modelo Entrenado Exportado listo para API"
+	@echo "Proceda a ejecutar 'all-gcp' para subir artefactos a GCP y registrar el modelo en Vertex AI"
+	@echo "====================================================="
+
+train:
+	@echo "=== [Paso 1/4] Procesando datos y entrenando modelo ==="
+	docker exec -i $(DOCKER_TRAINING_NAME) python src/manage_data.py
+	docker exec -i $(DOCKER_TRAINING_NAME) python src/train_model.py
+
+test:
+	@echo "=== [Paso 2/4] Ejecutando pruebas unitarias ==="
+	docker exec -i $(DOCKER_TRAINING_NAME) pytest tests/test_data.py -v -s
+	docker exec -i $(DOCKER_TRAINING_NAME) pytest tests/test_model.py -v -s
+	docker exec -i $(DOCKER_TRAINING_NAME) pytest tests/test_pipeline.py -v -s
+
+validate:
+	@echo "=== [Paso 3/4] Quality Gate y Validacion de Metricas ==="
+	docker exec -i $(DOCKER_TRAINING_NAME) python src/validate_model.py
+
+versions:
+	@echo "=== [Paso 4/4] Registro de version en MLflow ==="
+	docker exec -i $(DOCKER_TRAINING_NAME) python src/manage_versions.py
+
+# ── 3. Integracion y Publicacion en Google Cloud Platform (GCP) ──────────────
+
 gcp-service-up:
 	@echo "=== Verificando estado del contenedor GCP Vertex AI ==="
 	@if [ -z "$$(docker compose -f $(COMPOSE_FILE) ps -q $(GCP_SERVICE_NAME) 2>/dev/null)" ]; then \
@@ -127,33 +156,44 @@ validate-gcp-permissions: gcp-service-up
 		gcloud ai models list --region=$(GCP_DEFAULT_REGION)
 	@echo " Todos los permisos validados exitosamente en GCP."
 
+upload-gcp-models: validate-gcp-permissions
+	@echo "=== Subiendo artefactos a GCS Bucket ==="
+	MSYS_NO_PATHCONV=1 docker compose -f $(COMPOSE_FILE) exec $(GCP_SERVICE_NAME) \
+		gcloud storage cp artifacts/$(GCP_MODEL_PKL_NAME) $(GCP_DESTINATION)/$(GCP_MODEL_PKL_NAME)
+	MSYS_NO_PATHCONV=1 docker compose -f $(COMPOSE_FILE) exec $(GCP_SERVICE_NAME) \
+		gcloud storage cp artifacts/$(GCP_MODEL_SKOPS_NAME) $(GCP_DESTINATION)/$(GCP_MODEL_SKOPS_NAME)
+	MSYS_NO_PATHCONV=1 docker compose -f $(COMPOSE_FILE) exec $(GCP_SERVICE_NAME) \
+		gcloud storage cp artifacts/$(GCP_MODEL_JSON_NAME) $(GCP_DESTINATION)/$(GCP_MODEL_JSON_NAME)
+	@echo "=== Listando archivos subidos ==="
+	MSYS_NO_PATHCONV=1 docker compose -f $(COMPOSE_FILE) exec $(GCP_SERVICE_NAME) \
+		gcloud storage ls $(GCP_DESTINATION)/
 
-# ── 4. Pipeline de CI / CD Local (Entrenamiento y Validación) ──────────────────────────────────────────────────────
-all: download-dvc check-training train test validate versions
+register-vertex: validate-gcp-permissions
+	@echo "=== Registrando modelo en Vertex AI Model Registry ==="
+	MSYS_NO_PATHCONV=1 docker compose -f $(COMPOSE_FILE) exec $(GCP_SERVICE_NAME) \
+		gcloud ai models upload \
+			--region=$(GCP_DEFAULT_REGION) \
+			--display-name="$(MODEL_NAME)" \
+			--container-image-uri="$(GCP_CONTAINER_IMAGE_URI)" \
+			--artifact-uri="$(GCP_DESTINATION)/" \
+			--description="Modelo para prediccion de renovacion de prestamos."
+
+push-fastapi-gcp: validate-gcp-permissions
+	@echo "=== 1. Autenticando Docker con Artifact Registry de GCP ==="
+	gcloud auth configure-docker $(GCP_DEFAULT_REGION)-docker.pkg.dev --quiet
+	@echo "=== 2. Construyendo imagen de FastAPI ==="
+	docker compose -f $(COMPOSE_FILE) build $(FASTAPI_SERVICE_NAME)
+	@echo "=== 3. Etiquetando imagen para GCP Artifact Registry ==="
+	docker tag $(IMAGE_NAME_FASTAPI):$(IMAGE_VERSION) $(GCP_FASTAPI_REMOTE)
+	@echo "=== 4. Subiendo imagen ==="
+	docker push $(GCP_FASTAPI_REMOTE)
+
+all-gcp: upload-gcp-models register-vertex push-fastapi-gcp
 	@echo "====================================================="
-	@echo "Pipeline completado. Modelo Entrenado Exportado listo para API"
+	@echo "Artefactos Registrados del Modelo Entrenado en GCP"
 	@echo "====================================================="
 
-train:
-	@echo "=== [Paso 1/4] Procesando datos y entrenando modelo ==="
-	docker exec -i $(DOCKER_TRAINING_NAME) python src/manage_data.py
-	docker exec -i $(DOCKER_TRAINING_NAME) python src/train_model.py
-
-test:
-	@echo "=== [Paso 2/4] Ejecutando pruebas unitarias ==="
-	docker exec -i $(DOCKER_TRAINING_NAME) pytest tests/test_data.py -v -s
-	docker exec -i $(DOCKER_TRAINING_NAME) pytest tests/test_model.py -v -s
-	docker exec -i $(DOCKER_TRAINING_NAME) pytest tests/test_pipeline.py -v -s
-
-validate:
-	@echo "=== [Paso 3/4] Quality Gate y Validación de Métricas ==="
-	docker exec -i $(DOCKER_TRAINING_NAME) python src/validate_model.py
-
-versions:
-	@echo "=== [Paso 4/4] Registro de versión en MLflow ==="
-	docker exec -i $(DOCKER_TRAINING_NAME) python src/manage_versions.py
-
-# ── 5. Entorno de Desarrollo Local ──────────────────────────────────────
+# ── 4. Entorno de Desarrollo Local ────────────────────────────────────────────
 dev-up: download-dvc check-mlflow check-training
 	@echo "Levantando modelo de entrenamiento..."
 	docker compose -f $(COMPOSE_FILE) up -d $(TRAINING_SERVICE_NAME)
@@ -163,7 +203,7 @@ dev-up: download-dvc check-mlflow check-training
 
 dev-down:
 	docker compose -f $(COMPOSE_FILE) down -v
-	@echo "=== Entorno detenido y volúmenes purgados ==="
+	@echo "=== Entorno detenido y volumenes purgados ==="
 
 dev-logs:
 	docker compose -f $(COMPOSE_FILE) logs -f
@@ -177,7 +217,7 @@ dev-logs-mlflow:
 dev-ps:
 	docker compose -f $(COMPOSE_FILE) ps
 
-# ── 6. Entorno Productivo Simulado ──────────────────────────────────────
+# ── 5. Entorno Productivo y Despliegue ──────────────────────────────────────
 prod-up: clean-all download-dvc
 	@echo "=== Levantando entorno productivo ==="
 	@eval $$(grep -v '^#' $(ENV_PROD) | xargs) && \
@@ -186,31 +226,29 @@ prod-up: clean-all download-dvc
 
 prod-down:
 	docker compose -f $(COMPOSE_FILE_PROD) down -v
-	@echo "=== Entorno detenido y volúmenes purgados ==="
-	
-# ── Flujo de Despliegue y Orquestación (deploy.sh) ───────────────────────────
-## Flujo completo de despliegue manual encapsulado en bash
+	@echo "=== Entorno detenido y volumenes purgados ==="
+
 deploy:
 	@chmod +x deploy.sh
 	bash deploy.sh $(VERSION)
 
 ## Rollback de infraestructura a una etiqueta previa de Docker
 rollback:
-	@echo "=== Ejecutando Rollback a versión: $(VERSION) ==="
+	@echo "=== Ejecutando Rollback a version: $(VERSION) ==="
 	docker compose -f $(COMPOSE_FILE) down
 	docker tag $(IMAGE_TRAIN):$(VERSION) $(IMAGE_TRAIN):latest
 	docker compose -f $(COMPOSE_FILE) up -d
 	@echo "=== Rollback completado ==="
 
-# ── 7. Limpieza y Mantenimiento ────────────────────────────────────
+# ── 6. Limpieza y Mantenimiento ────────────────────────────────────
 clean-files:
-	@echo "=== Limpiando cachés y temporales ==="
+	@echo "=== Limpiando caches y temporales ==="
 	rm -rf artifacts/* data/processed/* mlruns/* .pytest_cache htmlcov/ .coverage
 	find . -type d -name "__pycache__" -exec rm -rf {} +
 	find . -type f -name "*.pyc" -delete
 
 clean-all: clean-files
-	@echo "=== Purgando imágenes huérfanas y caché de Docker ==="
+	@echo "=== Purgando imagenes huerfanas y caches de Docker ==="
 	docker image prune -f
 	docker builder prune -f
 	docker compose -f $(COMPOSE_FILE) down -v
@@ -220,33 +258,47 @@ clean-all: clean-files
 help:
 	@echo ""
 	@echo "===================================================================="
-	@echo " Opciones de automatizacion del Makefile — Estructura MLOps "
+	@echo "   Opciones de Automatizacion del Makefile — Pipeline MLOps Integral "
 	@echo "===================================================================="
-	@echo "CI/CD local:"
-	@echo "  make download-aws          — Descarga únicamente los CSVs de AWS S3"
-	@echo "  make all                     — Ejecuta flujo completo (train + validate + docker)"
-	@echo "  make train                   — Orquesta el ciclo de entrenamiento en src/"
-	@echo "  make test                    — Ejecutar pruebas unitarias del directorio tests/"
-	@echo "  make validate      		  — quality gate de métricas"
-	@echo "  make versions      		  — versiones de modelos con MLFlow"
-	@echo "  make docker                  — Construye la imagen de la API (contexto raíz)"
-	@echo "  make build-mlflow            — Construye la imagen del servidor MLflow"
-	@echo "  make down                    — Detiene todos los contenedores y purga volúmenes y cache"
+	@echo "1. Gestion de Datos y Versionado (AWS S3 & DVC):"
+	@echo "  make create-dirs              — Crea la estructura de carpetas locales (data/raw, data/processed)"
+	@echo "  make aws-dvc-up               — Verifica e inicia el contenedor de DVC / AWS CLI"
+	@echo "  make download-aws             — Descarga directa de archivos CSV desde AWS S3"
+	@echo "  make download-dvc             — Descarga datos versionados mediante 'dvc pull'"
+	@echo "  make dvc-push                 — Sube nuevos conjuntos de datos a S3 con 'dvc push'"
 	@echo ""
-	@echo "Ambiente de desarrollo y contenedores:"
-	@echo "  make dev-up                  — Levanta FastAPI ($(PORT_LOCAL)) y MLflow ($(MLFLOW_PORT))"
-	@echo "  make dev-down                — Detiene el entorno y purga volúmenes locales"
-	@echo "  make dev-logs-api            — Sigue los logs en tiempo real de la API"
-	@echo "  make dev-logs-mlflow         — Sigue los logs del servidor de tracking"
-	@echo "  make dev-ps                  — Muestra el estado del clúster local de Docker"
+	@echo "2. Pipeline de CI/CD Local (Entrenamiento & Calidad):"
+	@echo "  make check-mlflow             — Valida o inicia el servidor de MLflow Tracking con Healthcheck"
+	@echo "  make check-training           — Valida o inicia el contenedor de entrenamiento"
+	@echo "  make all                      — Orquesta el flujo completo: DVC -> Train -> Tests -> Validate -> Versions"
+	@echo "  make train                    — Procesa datos y ejecuta el entrenamiento del modelo XGBoost"
+	@echo "  make test                     — Ejecuta pruebas unitarias de datos, modelo y pipeline (Pytest)"
+	@echo "  make validate                 — Aplica el Quality Gate de metricas sobre los artefactos"
+	@echo "  make versions                 — Registra el nuevo modelo y artefactos en MLflow Model Registry"
 	@echo ""
-	@echo "Ambiente de desarrollo y contenedores:"
-	@echo "  make prod-up                  — Levanta FastAPI version productivo simulado"	
-	@echo "  make prod-down                — Detiene el ambiente productivo simulado y purga volúmenes locales"
+	@echo "3. Integracion y Publicacion en Google Cloud Platform (GCP):"
+	@echo "  make gcp-service-up           — Inicia el contenedor gestor de GCP con sesion ADC de Windows"
+	@echo "  make validate-gcp-permissions — Valida permisos en GCS Bucket, Artifact Registry y Vertex AI"
+	@echo "  make upload-gcp-models        — Sube artefactos (.pkl, .skops, .json) al bucket de GCS"
+	@echo "  make register-vertex          — Registra el modelo en Vertex AI Model Registry con contenedor oficial"
+	@echo "  make push-fastapi-gcp         — Compila, etiqueta y sube la imagen Docker de FastAPI a Artifact Registry"
+	@echo "  make all-gcp                  — Exportacion integral a GCP: GCS + Vertex AI + Artifact Registry"
 	@echo ""
-	@echo "Despliegue y Control de Versiones:"
-	@echo "  make deploy VERSION=1.0.0    — Ejecuta las fases de validación del script deploy.sh"
-	@echo "  make rollback VERSION=1.0.0  — Reasigna tags de imagenes y levanta la versión previa"
-	@echo "  make clean-files                   — Remueve basura de compilación y cachés de python"
-	@echo "  make clean-images                  — Remueve imagenes de Docker no utilizadas"
+	@echo "4. Entorno de Desarrollo Local:"
+	@echo "  make dev-up                   — Levanta entorno local: API Training y MLflow (http://localhost:$(MLFLOW_PORT))"
+	@echo "  make dev-down                 — Detiene entorno de desarrollo y purga volumenes"
+	@echo "  make dev-logs                 — Sigue los logs de todos los servicios activos"
+	@echo "  make dev-logs-api             — Sigue los logs del contenedor de entrenamiento/API"
+	@echo "  make dev-logs-mlflow          — Sigue los logs del servidor de MLflow"
+	@echo "  make dev-ps                   — Lista el estado de los contenedores Docker del cluster"
+	@echo ""
+	@echo "5. Entorno Productivo y Despliegue:"
+	@echo "  make prod-up                  — Despliega la API en entorno productivo simulado ($(COMPOSE_FILE_PROD))"
+	@echo "  make prod-down                — Detiene el entorno productivo simulado"
+	@echo "  make deploy VERSION=1.0.0     — Ejecuta el flujo orquestado de despliegue con 'deploy.sh'"
+	@echo "  make rollback VERSION=1.0.0   — Revierte el despliegue al tag/imagen Docker anterior"
+	@echo ""
+	@echo "6. Limpieza y Mantenimiento:"
+	@echo "  make clean-files              — Elimina artefactos, temporales, caches de Python y cobertura"
+	@echo "  make clean-all                — Limpieza total: archivos + prune de imagenes y builder cache de Docker"
 	@echo "===================================================================="
