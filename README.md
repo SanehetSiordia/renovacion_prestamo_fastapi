@@ -1,10 +1,10 @@
 # ✨ Proyecto MLOPS End-To-End con Dataset de Renovacion Prestamo Bancario
-Proyecto integral de **MLOPs End-To-End** diseñado para predecir la propensión de renovación de préstamos bancarios con un dataset Desbalanceado. Se analizan datos guardados en **AWS S3 Bucket** con **Data Version Control (DVC)** desde contenedores **dockers multistage** que transforma los datos, compara diversos modelos de aprendizaje automatico supervizado y selecciona el  modelo con mejor recall y realiza fine tunning guardando todos los entrenamientos con **MLFLOW**. Por ultimó, se exporta el modelo en .pck, .skops y .json y se crea una aplicacion para prediccion con el framework **FastAPI** al cumplir con las validaciones de pruebas unitarias con **Pytest** y se exportan los modelos y la API a **Google Cloud Storage**, **Vertex AI** y **Artifact Registry** mediante autenticación segura sin exposición de secretos (ADC).
+Proyecto integral de **MLOPs End-To-End** diseñado para predecir la propensión de renovación de préstamos bancarios con un dataset Desbalanceado. Se analizan datos guardados en **AWS S3 Bucket** con **Data Version Control (DVC)** desde contenedores **dockers multistage** que transforma los datos, compara diversos modelos de aprendizaje automatico supervisado y selecciona el  modelo con mejor recall y realiza fine tunning guardando todos los entrenamientos con **MLFLOW**. Por ultimó, se exporta el modelo en .pkl, .skops y .json y se crea una aplicacion para prediccion con el framework **FastAPI** al cumplir con las validaciones de pruebas unitarias con **Pytest** y se exportan los modelos y la API a **Google Cloud Storage**, **Vertex AI** y **Artifact Registry** mediante autenticación segura sin exposición de secretos (ADC).
 
-El mejor modelo con fine tunning es XGBoost con un Recall mayor al 65% por naturaleza del dataset desbalanceado analizado.
+> **Resultado Clave de Machine Learning:** Tras evaluar múltiples modelos supervisados, **XGBoost Classifier** optimizado alcanzó un **Recall superior al 65%** en la clase minoritaria (debido a la naturaleza desbalanceada del dataset), priorizando la reducción de falsos negativos para maximizar la retención de clientes en campañas crediticias.
 
 ## 🎯 Resumen del Proyecto
-- **Gestion de Datos y Versionado (AWS S3 & DVC):** Dataset real derivado del proyecto de Machine Learning: **[renovacion_prestamo_ML](https://github.com/SanehetSiordia/renovacion_prestamo_ML)** almacenados en AWS S3 Bucket con gestor de DVC para control de versiones y gestionado a traves de un contenedor docker con awscli "dvc[s3]" instalado y accecibilidad a travez del ACCESS_KEY.
+- **Gestion de Datos y Versionado (AWS S3 & DVC):** Dataset real derivado del proyecto de Machine Learning: **[renovacion_prestamo_ML](https://github.com/SanehetSiordia/renovacion_prestamo_ML)** almacenados en AWS S3 Bucket con gestor de DVC para control de versiones y gestionado a traves de un contenedor docker con awscli "dvc[s3]" instalado y accesibilidad a travéz del ACCESS_KEY.
 - **Extraccion y Transformacion de los Datos:** Extraccion y transformacion automatizados desde un contenedor docker.
 - **Entrenamiento, Registro y Exportacion de Modelos ML:** Entrenamiento y exportacion de modelos de aprendizaje supervisado con fine tunning y registros de experimentos versionados con MLFLOW desde contenedores docker.
 - **Aplicacion API REST para prediccion de Modelo Resultante:** Creacion de Api Rest con Framework FastAPI con Uvicorn para pruebas de prediccion locales al cumplir con pruebas unitarias hechas con Pytest desde un contenedor docker. 
@@ -124,7 +124,7 @@ En caso de tener cuenta Google Cloud y querer registrar el modelo y API se debe 
 │   ├── __init__.py                 
 │   ├── test_data.py                # Clase para validar el formato del dataset procesado
 │   ├── test_model.py               # Clase para validar los metodos de entrenamiento del modelo
-|   └── test_pipeline.py            # Clase para validar las metricas finales del modelo para aprovar el CI/CD
+|   └── test_pipeline.py            # Clase para validar las metricas finales del modelo para aprobar el CI/CD
 ├── compose.yml             # Orquestación de servicios Multi-Stage
 ├── Dockerfile              # Construcción Multi-Stage modular
 └── Makefile                # Automatización de tareas y comandos CLI
