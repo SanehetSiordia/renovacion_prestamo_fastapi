@@ -1,29 +1,31 @@
 # ✨ Proyecto MLOPS End-To-End con Dataset de Renovacion Prestamo Bancario
-Proyecto integral de **MLOPs End-To-End** donde se analizan datos guardados en **AWS S3 Bucket** con **Data Version Control (DVC)** desde contenedores **dockers multistage** que transforma los datos, compara diversos modelos de aprendizaje automatico supervizado y selecciona el  modelo con mejor recall y realiza fine tunning guardando todos los entrenamientos con **MLFLOW**. Por ultimó, se exporta el modelo en .pck, .skops y .json y se crea una aplicacion para prediccion con el framework **FastAPI** al cumplir con las validaciones de pruebas unitarias con **Pytest** y se exportan los modelos y la API a **Google Cloud Storage**, **Vertex AI** y **Artifact Registry**.
+Proyecto integral de **MLOPs End-To-End** diseñado para predecir la propensión de renovación de préstamos bancarios con un dataset Desbalanceado. Se analizan datos guardados en **AWS S3 Bucket** con **Data Version Control (DVC)** desde contenedores **dockers multistage** que transforma los datos, compara diversos modelos de aprendizaje automatico supervizado y selecciona el  modelo con mejor recall y realiza fine tunning guardando todos los entrenamientos con **MLFLOW**. Por ultimó, se exporta el modelo en .pck, .skops y .json y se crea una aplicacion para prediccion con el framework **FastAPI** al cumplir con las validaciones de pruebas unitarias con **Pytest** y se exportan los modelos y la API a **Google Cloud Storage**, **Vertex AI** y **Artifact Registry** mediante autenticación segura sin exposición de secretos (ADC).
 
+El mejor modelo con fine tunning es XGBoost con un Recall mayor al 65% por naturaleza del dataset desbalanceado analizado.
 
 ## 🎯 Resumen del Proyecto
 - **Gestion de Datos y Versionado (AWS S3 & DVC):** Dataset real derivado del proyecto de Machine Learning: **[renovacion_prestamo_ML](https://github.com/SanehetSiordia/renovacion_prestamo_ML)** almacenados en AWS S3 Bucket con gestor de DVC para control de versiones y gestionado a traves de un contenedor docker con awscli "dvc[s3]" instalado y accecibilidad a travez del ACCESS_KEY.
 - **Extraccion y Transformacion de los Datos:** Extraccion y transformacion automatizados desde un contenedor docker.
 - **Entrenamiento, Registro y Exportacion de Modelos ML:** Entrenamiento y exportacion de modelos de aprendizaje supervisado con fine tunning y registros de experimentos versionados con MLFLOW desde contenedores docker.
-- **Aplicacion API para prediccion de Modelo Resultante:** Creacion de Api con Framework FastAPI para pruebas de prediccion locales al cumplir con pruebas unitarias hechas con Pytest desde un contenedor docker. 
-- **Publicacion de Modelos en Google Cloud Platform:** Exportacion de modelos .pkl, .skops y .json a la plataforma Google Cloud Storage con registro del modelo en Vertex AI e integracion de la imagen docker del API de prediccion a Google Cloud Artifact Registry a traves de un contenedor docker con Google cloud-SDK instalado y seguridad Application Default Credentials (ADC).
-
+- **Aplicacion API REST para prediccion de Modelo Resultante:** Creacion de Api Rest con Framework FastAPI con Uvicorn para pruebas de prediccion locales al cumplir con pruebas unitarias hechas con Pytest desde un contenedor docker. 
+- **Publicacion de Modelos en Google Cloud Platform:** Exportacion de modelos .pkl, .skops y .json a la plataforma Google Cloud Storage con registro del modelo en Vertex AI e integracion de la imagen docker del API de prediccion a Google Cloud Artifact Registry a traves de un contenedor docker con Google cloud-SDK instalado y seguridad Application Default Credentials (ADC) por sesión montada en modo solo lectura (:ro), sin claves fijas en el repositorio.
 
 ---
 
 ## 🛠️ Stack Tecnológico
 
-[![Pytest](https://img.shields.io/badge/Pytest-fff?logo=pytest&logoColor=000)](#)
-![Python](https://img.shields.io/badge/Python-3.10+-blue?logo=python)
-![Git](https://img.shields.io/badge/Git-control%20de%20versiones-orange?logo=git)
-![Docker](https://img.shields.io/badge/Docker-contenedores-blue?logo=docker)
-![MLflow](https://img.shields.io/badge/MLflow-tracking-lightblue?logo=mlflow)
-![FastAPI](https://img.shields.io/badge/FastAPI-serving-green?logo=fastapi)
-![Google Cloud Storage](https://img.shields.io/badge/-Google%20Cloud%20Storage-AECBFA?style=flat&logo=googlecloudstorage&logoColor=white)
-[![Google Cloud Vertex AI](https://img.shields.io/badge/Google%20Cloud-Vertex%20AI-blue)](https://cloud.google.com/vertex-ai)
-[![Google Cloud](https://img.shields.io/badge/Google%20Cloud-%234285F4.svg?logo=google-cloud&logoColor=white)](#)
-![AWS](https://custom-icon-badges.demolab.com/badge/AWS-%23FF9900.svg?logo=aws&logoColor=white)
+[![Python](https://img.shields.io/badge/Python-3.12-blue?logo=python&logoColor=white)](#)
+[![Docker](https://img.shields.io/badge/Docker-Multi--Stage-2496ED?logo=docker&logoColor=white)](#)
+[![MLflow](https://img.shields.io/badge/MLflow-Tracking%20%26%20Registry-0194E2?logo=mlflow&logoColor=white)](#)
+[![DVC](https://img.shields.io/badge/DVC-Data%20Version%20Control-945DD6?logo=dvc&logoColor=white)](#)
+[![FastAPI](https://img.shields.io/badge/FastAPI-Serving%20API-009688?logo=fastapi&logoColor=white)](#)
+[![Pytest](https://img.shields.io/badge/Pytest-Quality%20Gate-0A9EDC?logo=pytest&logoColor=white)](#)
+[![AWS S3](https://img.shields.io/badge/AWS-S3%20Bucket-FF9900?logo=amazons3&logoColor=white)](#)
+[![Google Cloud](https://img.shields.io/badge/GCP-Vertex%20AI%20%7C%20GCS%20%7C%20Artifact%20Registry-4285F4?logo=googlecloud&logoColor=white)](#)
+
+---
+## 🏛️ Arquitectura del Sistema
+![](./evidencias/MLOPS_diagram.png)
 
 ---
 
@@ -107,22 +109,25 @@ En caso de tener cuenta Google Cloud y querer registrar el modelo y API se debe 
 ├── evidencias/
 │   └── *.png                       # Evidencias de resultados en AWS S3 Bucket y GCP Bucket, Vertex-Ai y artifact-registry
 ├── mlruns/                         # Rutal que guarda los modelados con MLFLOW de forma local y automatica
-├── notebooks/
+├── notebooks/                      # Análisis exploratorio y prototipado experimental
 │   └── notebook_renovacion_prestamo.ipynb
 ├── requirements/
 │   ├── fastapi.txt                 # Librerias requeridas para la fase de FastAPI del proyecto
 │   └── training.txt                # Librerias requeridas para la fase del entrenamiento del modelo
-├── api/
+├── src/                            # Pipeline modular de Data Science y MLOps
 │   ├── __init__.py                 
 │   ├── manage_data.py              # Clase para limpieza y transformacion de los datos
 │   ├── train_model.py              # Clase para entrenar los modelos y generar los artefactos finales
 │   ├── manage_versions.py          # Clase para gestionar el versionamiento de los modelados con MLFLOW
 │   └── validate_model.py           # Clase para validar y guardar las metricas del modelo final
 └── tests/
-    ├── __init__.py                 
-    ├── test_data.py                # Clase para validar el formato del dataset procesado
-    ├── test_model.py               # Clase para validar los metodos de entrenamiento del modelo
-    └── test_pipeline.py            # Clase para validar las metricas finales del modelo para aprovar el CI/CD
+│   ├── __init__.py                 
+│   ├── test_data.py                # Clase para validar el formato del dataset procesado
+│   ├── test_model.py               # Clase para validar los metodos de entrenamiento del modelo
+|   └── test_pipeline.py            # Clase para validar las metricas finales del modelo para aprovar el CI/CD
+├── compose.yml             # Orquestación de servicios Multi-Stage
+├── Dockerfile              # Construcción Multi-Stage modular
+└── Makefile                # Automatización de tareas y comandos CLI
 ```
 
 
@@ -130,3 +135,5 @@ En caso de tener cuenta Google Cloud y querer registrar el modelo y API se debe 
 
 ## Plan a Futuro
 - Agregar desacoplamiento de transformacion de datos con PySpark y Databricks para FullStack MLOPs Project
+- Data Pipeline Distribuido: Integrar clúster de Databricks Community Edition (PySpark) para feature engineering a gran escala conectado directamente con AWS S3.
+- Monitoreo Continuo: Implementar Evidently AI para detección de Data Drift y Concept Drift en producción.
