@@ -193,54 +193,12 @@ all-gcp: upload-gcp-models register-vertex push-fastapi-gcp
 	@echo "Artefactos Registrados del Modelo Entrenado en GCP"
 	@echo "====================================================="
 
-# ── 4. Entorno de Desarrollo Local ────────────────────────────────────────────
-dev-up: download-dvc check-mlflow check-training
-	@echo "Levantando modelo de entrenamiento..."
-	docker compose -f $(COMPOSE_FILE) up -d $(TRAINING_SERVICE_NAME)
-	@echo "=== Entorno listo ==="
-	@echo "  MODEL TRAINING: http://localhost:$(PORT_LOCAL)"
-	@echo "  MLflow: http://localhost:$(MLFLOW_PORT)"
-
-dev-down:
-	docker compose -f $(COMPOSE_FILE) down -v
-	@echo "=== Entorno detenido y volumenes purgados ==="
-
-dev-logs:
-	docker compose -f $(COMPOSE_FILE) logs -f
-
-dev-logs-api:
-	docker compose -f $(COMPOSE_FILE) logs -f $(TRAINING_SERVICE_NAME)
-
-dev-logs-mlflow:
-	docker compose -f $(COMPOSE_FILE) logs -f $(MLFLOW_SERVICE_NAME)
-
-dev-ps:
-	docker compose -f $(COMPOSE_FILE) ps
-
-# ── 5. Entorno Productivo y Despliegue ──────────────────────────────────────
-prod-up: clean-all download-dvc
-	@echo "=== Levantando entorno productivo ==="
-	@eval $$(grep -v '^#' $(ENV_PROD) | xargs) && \
-	docker compose --env-file $(ENV_PROD) -f $(COMPOSE_FILE_PROD) build --no-cache --pull && \
-	docker compose --env-file $(ENV_PROD) -f $(COMPOSE_FILE_PROD) up -d
-
-prod-down:
-	docker compose -f $(COMPOSE_FILE_PROD) down -v
-	@echo "=== Entorno detenido y volumenes purgados ==="
-
-deploy:
-	@chmod +x deploy.sh
-	bash deploy.sh $(VERSION)
-
-## Rollback de infraestructura a una etiqueta previa de Docker
-rollback:
-	@echo "=== Ejecutando Rollback a version: $(VERSION) ==="
-	docker compose -f $(COMPOSE_FILE) down
-	docker tag $(IMAGE_TRAIN):$(VERSION) $(IMAGE_TRAIN):latest
-	docker compose -f $(COMPOSE_FILE) up -d
-	@echo "=== Rollback completado ==="
-
 # ── 6. Limpieza y Mantenimiento ────────────────────────────────────
+down:
+	docker compose -f $(COMPOSE_FILE) down -v
+	docker builder prune -f
+	@echo "=== Entorno detenido, volumenes y caches purgados ==="
+
 clean-files:
 	@echo "=== Limpiando caches y temporales ==="
 	rm -rf artifacts/* data/processed/* mlruns/* .pytest_cache htmlcov/ .coverage
@@ -284,21 +242,8 @@ help:
 	@echo "  make push-fastapi-gcp         — Compila, etiqueta y sube la imagen Docker de FastAPI a Artifact Registry"
 	@echo "  make all-gcp                  — Exportacion integral a GCP: GCS + Vertex AI + Artifact Registry"
 	@echo ""
-	@echo "4. Entorno de Desarrollo Local:"
-	@echo "  make dev-up                   — Levanta entorno local: API Training y MLflow (http://localhost:$(MLFLOW_PORT))"
-	@echo "  make dev-down                 — Detiene entorno de desarrollo y purga volumenes"
-	@echo "  make dev-logs                 — Sigue los logs de todos los servicios activos"
-	@echo "  make dev-logs-api             — Sigue los logs del contenedor de entrenamiento/API"
-	@echo "  make dev-logs-mlflow          — Sigue los logs del servidor de MLflow"
-	@echo "  make dev-ps                   — Lista el estado de los contenedores Docker del cluster"
-	@echo ""
-	@echo "5. Entorno Productivo y Despliegue:"
-	@echo "  make prod-up                  — Despliega la API en entorno productivo simulado ($(COMPOSE_FILE_PROD))"
-	@echo "  make prod-down                — Detiene el entorno productivo simulado"
-	@echo "  make deploy VERSION=1.0.0     — Ejecuta el flujo orquestado de despliegue con 'deploy.sh'"
-	@echo "  make rollback VERSION=1.0.0   — Revierte el despliegue al tag/imagen Docker anterior"
-	@echo ""
-	@echo "6. Limpieza y Mantenimiento:"
+	@echo "4. Limpieza y Mantenimiento:"
+	@echo "  make down                     — Detiene el entorno y purga volumenes de Docker Compose"
 	@echo "  make clean-files              — Elimina artefactos, temporales, caches de Python y cobertura"
 	@echo "  make clean-all                — Limpieza total: archivos + prune de imagenes y builder cache de Docker"
 	@echo "===================================================================="
